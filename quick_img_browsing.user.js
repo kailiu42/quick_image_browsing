@@ -1,7 +1,9 @@
 // ==UserScript==
-// @name           Quick Img Browsing
-// @namespace      kraml
-// @include        *
+// @name		Quick Img Browsing
+// @namespace	kraml
+// @include		*
+// @exclude		http*://www.google.com/reader/*
+// @exclude		http*://mail.google.com/*
 // ==/UserScript==
 
 var DEBUG = true;
