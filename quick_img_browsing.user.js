@@ -15,7 +15,7 @@ var KEY_VIEW_ORIGIN = 118; // v
 // 105 i 117 u
 
 //滚动页面到图片时，图片边缘的与可视区域的上下边距
-var margin = 10;
+var margin = 30;
 
 // 最小图片尺寸。小于此大小的图片将会在浏览时跳过
 var minImgWidth = 200;
@@ -26,8 +26,8 @@ var maxImgWidth = self.innerWidth; // 如果图片页面在一个frame内，self
 var maxImgHeight = self.innerHeight;
 
 // 图片尺寸大于上面的最大尺寸时，将会被缩小到不超过如下尺寸
-var adequateImgWidth = maxImgWidth - 2 * margin - 20;
-var adequateImgHeight = maxImgHeight - 2 * margin - 20;
+var adequateImgWidth = maxImgWidth - margin - 20;
+var adequateImgHeight = maxImgHeight - margin - 20;
 
 var eve;
 var noticeDIV;
@@ -71,10 +71,25 @@ document.addEventListener('keypress', function(event) {
 					var scrollToImgIdx = imgIdx - 2; // 减2因为进入到这个for循环时imgIdx已经++了
 				}
 
-				// if(DEBUG) { debugMsg("ImgHeight: " + imgList[scrollToImgIdx].height + "</br>ImgWidth: " + imgList[scrollToImgIdx].width); }
-				//缩小图片以适应屏幕
-				if(imgList[scrollToImgIdx].height > maxImgHeight) { imgList[scrollToImgIdx].height = adequateImgHeight; }
-				if(imgList[scrollToImgIdx].width > maxImgWidth) { imgList[scrollToImgIdx].height = adequateImgWidth; }
+
+				// 缩小图片以适应屏幕
+				var origImgHeight = imgList[scrollToImgIdx].height;
+				var origImgWidth = imgList[scrollToImgIdx].width;
+				if(origImgHeight > maxImgHeight || origImgWidth > maxImgWidth) {
+					// 根据长宽比来选择是按高还是宽来缩放
+					if((imgList[scrollToImgIdx].height / imgList[scrollToImgIdx].width) > (maxImgHeight / maxImgWidth)) {
+						imgList[scrollToImgIdx].height = adequateImgHeight;
+						imgList[scrollToImgIdx].width =  adequateImgHeight * origImgWidth / origImgHeight;
+					} else {
+						imgList[scrollToImgIdx].width = adequateImgWidth;
+						imgList[scrollToImgIdx].height = adequateImgWidth * origImgHeight / origImgWidth;
+					}
+				}
+
+				if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + scrollToImgIdx + "</br>Total:" + imgList.length + 
+									"</br>Adequate(HxW): " + adequateImgHeight + "x" + adequateImgWidth +
+									"</br>Original(HxW): " + origImgHeight + "x" + origImgWidth +
+									"</br>Resized(HxW): " + imgList[scrollToImgIdx].height + "x" + imgList[scrollToImgIdx].width); }
 
 				//滚动到图片
 				window.scrollTo(0, getY(imgList[scrollToImgIdx]) - margin);
@@ -88,7 +103,6 @@ document.addEventListener('keypress', function(event) {
 					imgList[scrollToImgIdx].setAttribute('tabindex',0);
 				}
 
-				if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + scrollToImgIdx + "</br>Total:" + imgList.length); }
 				// 完成一次滚动，退出循环
 				break;
 			}
@@ -154,19 +168,15 @@ function noticeMsg(html){
 			float: none !important;\
 			width: auto !important;\
 			height: auto !important;\
+			font-family: Segoe UI, Arial, Helvetica !important;\
 			font-size: 14px !important;\
 			padding: 3px 20px 2px 5px !important;\
 			background-color: #7f8f9c !important;\
 			border: none !important;\
 			color: #000 !important;\
 			text-align: left !important;\
-			left: 0 !important;\
+			right: 0 !important;\
 			bottom: 0 !important;\
-			border-radius: 0 6px 0 0! important;\
-			-moz-border-radius: 0 6px 0 0 !important;\
-			-o-transition: opacity 0.3s ease-in-out;\
-			-webkit-transition: opacity 0.3s ease-in-out;\
-			-moz-transition: opacity 0.3s ease-in-out;\
 		';
 		document.body.appendChild(noticeDIV);
 	};
@@ -182,13 +192,14 @@ function debugMsg(html){
 			float: none !important;\
 			width: auto !important;\
 			height: auto !important;\
+			font-family: Segoe UI, Arial, Helvetica !important;\
 			font-size: 14px !important;\
 			padding: 3px 20px 2px 5px !important;\
 			background-color: #7f8f9c !important;\
 			border: none !important;\
 			color: #000 !important;\
 			text-align: left !important;\
-			left: 0 !important;\
+			right: 0 !important;\
 			bottom: 0 !important;\
 		';
 		document.body.appendChild(debugDIV);
