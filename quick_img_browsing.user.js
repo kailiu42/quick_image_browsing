@@ -8,105 +8,94 @@
 
 var DEBUG = true;
 
-// 快捷键
-var KEY_UP = 107; // k
-var KEY_DOWN = 106; // j
-var KEY_VIEW_ORIGIN = 118; // v
-// 105 i 117 u
+var userprefs = {
+	// 快捷键
+	keyUP : 107, // k
+	keyDown : 106, // j
+	KEY_VIEW_ORIGIN : 118, // v
 
-//滚动页面到图片时，图片边缘的与可视区域的上下边距
-var margin = 30;
+	//滚动页面到图片时，图片边缘的与可视区域的边距
+	margin : 20,
 
-// 最小图片尺寸。小于此大小的图片将会在浏览时跳过
-var minImgWidth = 200;
-var minImgHeight = 200;
+	// 最小图片尺寸。小于此大小的图片将会在浏览时跳过
+	minImgH : 200,
+	minImgW : 200,
+};
+
 
 // 最大图片尺寸。大于（任一维度大于最大值时）此大小的图片将会被缩小
-var maxImgWidth = self.innerWidth; // 如果图片页面在一个frame内，self取得的是frame的尺寸。如果使用window.innerWidth取得的是顶层窗口的尺寸
-var maxImgHeight = self.innerHeight;
+MAX_IMG_H = self.innerHeight - 2 * userprefs.margin; // 如果图片页面在一个frame内，self取得的是frame的尺寸。如果使用window.innerWidth取得的是顶层窗口的尺寸
+MAX_IMG_W = self.innerWidth - 2 * userprefs.margin;
 
 // 图片尺寸大于上面的最大尺寸时，将会被缩小到不超过如下尺寸
-var adequateImgWidth = maxImgWidth - margin - 20;
-var adequateImgHeight = maxImgHeight - margin - 20;
+var ADEQUATE_IMG_H = MAX_IMG_H - 10;
+var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
 var eve;
 var noticeDIV;
 var debugDIV;
 
+var imgList;
+var curImg;
+
+var initialized = false;
+
 var $ = function(o){ return document.querySelectorAll(o); }
 
-document.addEventListener('keypress', function(event) {
-	// if(DEBUG) { debugMsg(event.charCode); }
-	var imgList = $("img");
-	var currentImg = $("img[tabindex]")[0];
-	// if(event.charCode == 111) { currentImg.focus(); }
-	// if(event.charCode == KEY_VIEW_ORIGIN) { document.location.href = currentImg.src; }
+function init()
+{
+	if(!initialized) {
+		imgList = document.querySelectorAll("img");
+		curImg = document.querySelectorAll("img[tabindex]")[0];
 
-	if(event.charCode == KEY_DOWN || event.charCode == KEY_UP) {
+		addGlobalStyle('img[tabindex=0] { border: 3px !important; border-color: #7f8f9c !important;}');
+
+		initialized = true;
+	}
+}
+
+document.addEventListener('keypress', function(event) {
+	init();
+	// if(DEBUG) { debugMsg(event.charCode); }
+	// if(event.charCode == userprefs.KEY_VIEW_ORIGIN) { document.location.href = curImg.src; }
+
+	if(event.charCode == userprefs.keyDown || event.charCode == userprefs.keyUP) {
 		for(imgIdx = 0; imgIdx < imgList.length; imgIdx++){
-			// GM_log(imgList[imgIdx].offsetTop);
 			var img = imgList[imgIdx];
-			/* if(img.offsetTop > document.documentElement.scrollTop && (img.offsetWidth * img.offsetHeight) > 95000) {
-				if(event.charCode==117){var scrollToImgIdx=imgIdx;}else{var scrollToImgIdx=imgIdx-2;}
-				if(patrn(window.location.href,"psp\.duowan\.com"))
-					{window.scrollTo(0,imgList[scrollToImgIdx].offsetTop-40);}
-				else if (patrn(window.location.href,"67\.220\.92\.21"))
-					{window.scrollTo(0,imgList[scrollToImgIdx].offsetTop+231);}
-				else if (patrn(window.location.href,"www\.mm2you\.com"))
-					{window.scrollTo(0,imgList[scrollToImgIdx].offsetTop+200);}
-				else if (patrn(window.location.href,"www\.thirtythr33\.de"))
-					{window.scrollTo(0,imgList[scrollToImgIdx].offsetTop+120);}
-				else
-					{window.scrollTo(0,imgList[scrollToImgIdx].offsetTop);}
-				break;
-			}
-			*/
-			// if(getY(img) > document.documentElement.scrollTop && (img.offsetWidth * img.offsetHeight) > 95000){
-			
+
 			// 找到的第一个Y坐标大于页面的已卷过的高度+margin的图片，也就是当前正看到的图片。并且大小足够大
-			if(getY(img) > document.documentElement.scrollTop + margin && (img.offsetWidth * img.offsetHeight) > minImgWidth * minImgHeight){
-				if(event.charCode == KEY_DOWN) {
+			if(getY(img) > document.documentElement.scrollTop + userprefs.margin && (img.offsetWidth * img.offsetHeight) > (userprefs.minImgW * userprefs.minImgH)){
+				if(event.charCode == userprefs.keyDown) {
 					var scrollToImgIdx = imgIdx;
 				} else {
 					var scrollToImgIdx = imgIdx - 2; // 减2因为进入到这个for循环时imgIdx已经++了
+					alert(scrollToImgIdx);
 				}
-
 
 				// 缩小图片以适应屏幕
-				var origImgHeight = imgList[scrollToImgIdx].height;
-				var origImgWidth = imgList[scrollToImgIdx].width;
-				if(origImgHeight > maxImgHeight || origImgWidth > maxImgWidth) {
-					// 根据长宽比来选择是按高还是宽来缩放
-					if((imgList[scrollToImgIdx].height / imgList[scrollToImgIdx].width) > (maxImgHeight / maxImgWidth)) {
-						imgList[scrollToImgIdx].height = adequateImgHeight;
-						imgList[scrollToImgIdx].width =  adequateImgHeight * origImgWidth / origImgHeight;
-					} else {
-						imgList[scrollToImgIdx].width = adequateImgWidth;
-						imgList[scrollToImgIdx].height = adequateImgWidth * origImgHeight / origImgWidth;
-					}
-				}
+				fitImg(imgList[scrollToImgIdx]);
 
 				if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + scrollToImgIdx + "</br>Total:" + imgList.length + 
-									"</br>Adequate(HxW): " + adequateImgHeight + "x" + adequateImgWidth +
-									"</br>Original(HxW): " + origImgHeight + "x" + origImgWidth +
-									"</br>Resized(HxW): " + imgList[scrollToImgIdx].height + "x" + imgList[scrollToImgIdx].width); }
+									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+									"</br>Original(HxW): " + imgList[scrollToImgIdx].getUserData("origH") + " x " + imgList[scrollToImgIdx].getUserData("origW") +
+									"</br>Resized(HxW): " + imgList[scrollToImgIdx].height + " x " + imgList[scrollToImgIdx].width); }
 
 				//滚动到图片
-				window.scrollTo(0, getY(imgList[scrollToImgIdx]) - margin);
+				window.scrollTo(0, getY(imgList[scrollToImgIdx]) - userprefs.margin);
 
 				//标识当前图片
 				try	{
-					currentImg.removeAttribute('tabindex');
-					imgList[scrollToImgIdx].setAttribute('tabindex',0);
+					curImg.removeAttribute('tabindex');
+					imgList[scrollToImgIdx].setAttribute('tabindex', 0);
 				}
 				catch(err) {
-					imgList[scrollToImgIdx].setAttribute('tabindex',0);
+					imgList[scrollToImgIdx].setAttribute('tabindex', 0);
 				}
 
 				// 完成一次滚动，退出循环
 				break;
 			}
- 			//alert(imgIdx + " / " + imgList.length);
 
 			// 到达最后一张图片，显示提示信息
 			/*
@@ -122,30 +111,7 @@ document.addEventListener('keypress', function(event) {
 			//}
 		}
 	}
-/*	else if(event.charCode==100){
-		for(imgIdx=0;imgIdx<imgList.length;imgIdx++){
-			var img=imgList[imgIdx]
-			if(img.offsetTop > document.documentElement.scrollTop && (img.src.indexOf('torrent') > 0 || img.src.indexOf('rar') > 0 )){
-				window.scrollTo(0,img.offsetTop);
-				break;
-			}
-		}
-	}
-*/
 }, true);
-
-
-function turnPage()
-{
-	if(eve == 106) {
-		var int = Math.round(arguments[1]) + 1;
-		return "/" + int;
-	}
-	else {
-		var int = Math.round(arguments[1]) - 1;
-		return "/" + int;
-	}
-}
 
 // 对象的X坐标
 function getX(obj)
@@ -159,7 +125,27 @@ function getY(obj)
 	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
 }
 
-function noticeMsg(html){
+// 缩小图片尺寸到小于窗口可视大小
+function fitImg(img)
+{
+	img.setUserData('origH', img.height, null);
+	img.setUserData('origW', img.width, null);
+	//alert(img.getUserData('origH'));
+
+	if(img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
+		// 根据长宽比来选择是按高还是宽来缩放
+		if((img.height / img.width) > (MAX_IMG_H / MAX_IMG_W)) {
+			img.height = ADEQUATE_IMG_H;
+			img.width  = ADEQUATE_IMG_H * img.getUserData("origW") / img.getUserData("origH");
+		} else {
+			img.width  = ADEQUATE_IMG_W;
+			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
+		}
+	}
+}
+
+function noticeMsg(html)
+{
 	if(!noticeDIV){
 		noticeDIV = document.createElement('div');
 		noticeDIV.style.cssText = '\
@@ -183,7 +169,8 @@ function noticeMsg(html){
 	noticeDIV.innerHTML=html;
 };
 
-function debugMsg(html){
+function debugMsg(html)
+{
 	if(!debugDIV){
 		debugDIV = document.createElement('div');
 		debugDIV.style.cssText = '\
@@ -206,3 +193,15 @@ function debugMsg(html){
 	};
 	debugDIV.innerHTML = html;
 };
+
+function addGlobalStyle(css) {
+	var head, style;
+
+	head = document.getElementsByTagName('head')[0];
+	if (!head) { return; }
+
+	style = document.createElement('style');
+	style.type = 'text/css';
+	style.innerHTML = css;
+	head.appendChild(style);
+}
