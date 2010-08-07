@@ -8,36 +8,38 @@
 
 var DEBUG = true;
 
+// User customizable preferences
 var userprefs = {
-	// 快捷键
+	// Shortcut keys
 	keyUP : 107, // k
 	keyDown : 106, // j
 	KEY_VIEW_ORIGIN : 118, // v
 
-	//滚动页面到图片时，图片边缘的与可视区域的边距
+	// When scroll to next image, the margin between image top edge to window top edge
 	margin : 25,
 
-	// 最小图片尺寸。小于此大小的图片将会在浏览时跳过
+	// Minimal image size. Image with smaller size will be skipped when browsing
 	minImgH : 200,
 	minImgW : 200,
 
-	// 当前图片的边框颜色
+	// The border color for highlighting current image
 	curBorderColor : "#7F8F9C",
-	// 被缩小过的图片的边框颜色
+	// The border color for hightlighting images that has been resized when browsing
 	resizedBorderColor : "#FF6666",
-	// 边框宽度
+	// The border width
 	borderWidth : "5px",
 };
 
 
-// 最大图片尺寸。大于（任一维度大于最大值时）此大小的图片将会被缩小
-MAX_IMG_H = self.innerHeight - 2 * userprefs.margin; // 如果图片页面在一个frame内，self取得的是frame的尺寸。如果使用window.innerWidth取得的是顶层窗口的尺寸
+// Max image size. Image with larger size(either larger height or width) will be resized
+MAX_IMG_H = self.innerHeight - 2 * userprefs.margin; // If the image is in a frame, "self" get the size of the frame. If use window.innerHeight will get size of top level window
 MAX_IMG_W = self.innerWidth - 2 * userprefs.margin;
 
-// 图片尺寸大于上面的最大尺寸时，将会被缩小到不超过如下尺寸
+// When the size of a image is lager than the max size above, reduce it to below size
 var ADEQUATE_IMG_H = MAX_IMG_H - 10;
 var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
+// For display notice / debug messages
 var noticeDIV;
 var debugDIV;
 
@@ -55,8 +57,10 @@ function init()
 		curImg = document.querySelectorAll("img[tabIndex]")[0];
 		curImgIdx = 0;
 
-		addGlobalStyle("img[tabIndex=\"0\"] { border-style: solid !important; border-width: " + userprefs.borderWidth + " !important; border-color: " + userprefs.curBorderColor + " !important;}");
-		addGlobalStyle("img[tabIndex=\"0\"].resized { border-style: solid !important; border-width: " + userprefs.borderWidth + " !important; border-color: " + userprefs.resizedBorderColor + " !important;}");
+		addGlobalStyle("img[tabIndex=\"0\"] { border-style: solid !important; border-width: " + userprefs.borderWidth +
+						" !important; border-color: " + userprefs.curBorderColor + " !important;}");
+		addGlobalStyle("img[tabIndex=\"0\"].resized { border-style: solid !important; border-width: " + userprefs.borderWidth +
+						" !important; border-color: " + userprefs.resizedBorderColor + " !important;}");
 
 		initialized = true;
 	}
@@ -67,20 +71,20 @@ document.addEventListener('keypress', function(event) {
 	// if(DEBUG) { debugMsg(event.charCode); }
 	// if(event.charCode == userprefs.KEY_VIEW_ORIGIN) { document.location.href = curImg.src; }
 
-	if(event.charCode == userprefs.keyDown) { // 向下浏览
+	if(event.charCode == userprefs.keyDown) { // Browsing from top to bottom
 		for(imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
 			var img = imgList[imgIdx];
 
-			// 忽略很小的图片, 寻找第一个正在当前可视区域的图片，从它开始浏览，而不是从第一个
+			// Ignore small images. Find the first image that top edege is under current viewport top edge
 			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
 				getY(img) > (document.documentElement.scrollTop + userprefs.margin)) {
-				// 将之前浏览的那张图片的tabIndex属性清空
+				// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 				try	{
 					curImg.removeAttribute("tabIndex");
 				} catch(err) {
 				}
 
-				// 缩小图片以适应屏幕
+				// Process image size
 				fitImg(img);
 
 				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
@@ -89,14 +93,14 @@ document.addEventListener('keypress', function(event) {
 									"</br>Original(HxW): " + img.getUserData("origH") + " x " + img.getUserData("origW") +
 									"</br>Resized(HxW): " + img.height + " x " + img.width); }
 
-				//滚动到图片
+				// Scroll to the proper position
 				window.scrollTo(0, getY(img) - userprefs.margin);
 
-				//标识当前图片
+				// Mark current viewing image
 				curImg = img;
 				curImg.setAttribute('tabIndex', 0);
 
-				// 寻找到图片并完成滚动，退出循环，等待下个keypress event
+				// Found the image, exit from the loop, wait for next keypress event
 				break;
 			}
 		}
@@ -104,16 +108,16 @@ document.addEventListener('keypress', function(event) {
 		for(imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
 			var img = imgList[imgIdx];
 
-			// 反向遍历整个list，找到第一个正在当前可视区域的图片，从它开始浏览，而不是从第一个
+			// Ignore small images. In reserved order, find the first image that top edege is just beyond current viewport top edge
 			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
 				getY(img) < (document.documentElement.scrollTop + userprefs.margin)) {
-				// 将之前浏览的那张图片的tabIndex属性清空
+				// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 				try	{
 					curImg.removeAttribute('tabIndex');
 				} catch(err) {
 				}
 
-				// 缩小图片以适应屏幕
+				// Process image size
 				fitImg(img);
 
 				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
@@ -122,14 +126,14 @@ document.addEventListener('keypress', function(event) {
 									"</br>Original(HxW): " + img.getUserData("origH") + " x " + img.getUserData("origW") +
 									"</br>Resized(HxW): " + img.height + " x " + img.width); }
 
-				//滚动到图片
+				// Scroll to the proper position
 				window.scrollTo(0, getY(img) - userprefs.margin);
 
-				//标识当前图片
+				// Mark current viewing image
 				curImg = img;
 				curImg.setAttribute('tabIndex', 0);
 
-				// 寻找到图片并完成滚动，退出循环，等待下个keypress event
+				// Found the image, exit from the loop, wait for next keypress event
 				break;
 			}
 		}
@@ -137,19 +141,19 @@ document.addEventListener('keypress', function(event) {
 	}
 }, true);
 
-// 获得对象左边缘与整个页面左边缘的距离
+// Get the distance between left edge of the page to left edge of the object
 function getX(obj)
 {
 	return obj.offsetLeft + (obj.offsetParent ? getX(obj.offsetParent) : obj.x ? obj.x : 0);
 }
 
-// 获得对象顶部边缘与整个页面顶部边缘的距离
+// Get the distance between top edge of the page to top edge of the object
 function getY(obj)
 {
 	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
 }
 
-// 缩小图片尺寸到小于窗口可视大小
+// Reduce image size
 function fitImg(img)
 {
 	img.setUserData('origH', img.height, null);
