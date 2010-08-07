@@ -15,11 +15,18 @@ var userprefs = {
 	KEY_VIEW_ORIGIN : 118, // v
 
 	//滚动页面到图片时，图片边缘的与可视区域的边距
-	margin : 20,
+	margin : 25,
 
 	// 最小图片尺寸。小于此大小的图片将会在浏览时跳过
 	minImgH : 200,
 	minImgW : 200,
+
+	// 当前图片的边框颜色
+	curBorderColor : "#7F8F9C",
+	// 被缩小过的图片的边框颜色
+	resizedBorderColor : "#FF6666",
+	// 边框宽度
+	borderWidth : "5px",
 };
 
 
@@ -31,14 +38,11 @@ MAX_IMG_W = self.innerWidth - 2 * userprefs.margin;
 var ADEQUATE_IMG_H = MAX_IMG_H - 10;
 var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
-var eve;
 var noticeDIV;
 var debugDIV;
 
 var imgList;
 var curImg;
-var curimgIdx;
-var nextImgIdx; // 指的要滚动到的下一张的图片的Idx，不是在list里面按顺序的下一张
 
 var initialized = false;
 
@@ -51,7 +55,8 @@ function init()
 		curImg = document.querySelectorAll("img[tabIndex]")[0];
 		curImgIdx = 0;
 
-		addGlobalStyle('img[tabIndex=\"0\"] { border-style: solid !important; border-width: 6px !important; border-color: #7f8f9c !important;}');
+		addGlobalStyle("img[tabIndex=\"0\"] { border-style: solid !important; border-width: " + userprefs.borderWidth + " !important; border-color: " + userprefs.curBorderColor + " !important;}");
+		addGlobalStyle("img[tabIndex=\"0\"].resized { border-style: solid !important; border-width: " + userprefs.borderWidth + " !important; border-color: " + userprefs.resizedBorderColor + " !important;}");
 
 		initialized = true;
 	}
@@ -66,87 +71,66 @@ document.addEventListener('keypress', function(event) {
 		for(imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
 			var img = imgList[imgIdx];
 
-			// 忽略很小的图片
-			if((img.offsetWidth * img.offsetHeight) > (userprefs.minImgW * userprefs.minImgH)) {
-				// 当前位置图片
-				// alert("getY: " + getY(img) + "\ndocument.documentElement.scrollTop: " + document.documentElement.scrollTop);
-
-				// 寻找第一个正在当前可视区域的图片，从它开始浏览，而不是从第一个
-				if(getY(img) > document.documentElement.scrollTop + userprefs.margin) {
-					// 将之前浏览的那张图片的tabIndex属性清空
-					try	{
-						curImg.removeAttribute('tabindex');
-					}
-					catch(err) {
-					}
-
-					nextImgIdx = imgIdx;
-
-					// 缩小图片以适应屏幕
-					fitImg(imgList[nextImgIdx]);
-
-					if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + nextImgIdx + "</br>Total:" + imgList.length + 
-										"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-										"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-										"</br>Original(HxW): " + imgList[nextImgIdx].getUserData("origH") + " x " + imgList[nextImgIdx].getUserData("origW") +
-										"</br>Resized(HxW): " + imgList[nextImgIdx].height + " x " + imgList[nextImgIdx].width); }
-
-					//滚动到图片
-					window.scrollTo(0, getY(imgList[nextImgIdx]) - userprefs.margin);
-
-					//标识当前图片
-					curImg = imgList[nextImgIdx];
-					imgList[nextImgIdx].setAttribute('tabIndex', 0);
-					curImgIdx = nextImgIdx;
-
-					// 寻找到图片并完成滚动，退出循环，等待下个keypress event
-					break;
+			// 忽略很小的图片, 寻找第一个正在当前可视区域的图片，从它开始浏览，而不是从第一个
+			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
+				getY(img) > (document.documentElement.scrollTop + userprefs.margin)) {
+				// 将之前浏览的那张图片的tabIndex属性清空
+				try	{
+					curImg.removeAttribute("tabIndex");
+				} catch(err) {
 				}
+
+				// 缩小图片以适应屏幕
+				fitImg(img);
+
+				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
+									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+									"</br>Original(HxW): " + img.getUserData("origH") + " x " + img.getUserData("origW") +
+									"</br>Resized(HxW): " + img.height + " x " + img.width); }
+
+				//滚动到图片
+				window.scrollTo(0, getY(img) - userprefs.margin);
+
+				//标识当前图片
+				curImg = img;
+				curImg.setAttribute('tabIndex', 0);
+
+				// 寻找到图片并完成滚动，退出循环，等待下个keypress event
+				break;
 			}
 		}
-	} else if (event.charCode == userprefs.keyUP) {
-		// 向上浏览
+	} else if (event.charCode == userprefs.keyUP) { // 向上浏览
 		for(imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
 			var img = imgList[imgIdx];
 
-			/*if(DEBUG) { debugMsg("getY: " + getY(img) + 
-								"</br>img.offsetHeight: " + img.offsetHeight +
-								"</br>+ = " + (getY(img) + img.offsetHeight) +
-								"</br>document.documentElement.scrollTop: " + document.documentElement.scrollTop +
-								"</br>window.innerHeight: " + window.innerHeight +
-								"</br>+ = " + (document.documentElement.scrollTop + window.innerHeight)); }*/
 			// 反向遍历整个list，找到第一个正在当前可视区域的图片，从它开始浏览，而不是从第一个
-			if((img.offsetWidth * img.offsetHeight) > (userprefs.minImgW * userprefs.minImgH)) {
-				if(getY(img) < document.documentElement.scrollTop + userprefs.margin) {
-					// 将之前浏览的那张图片的tabIndex属性清空
-					try	{
-						curImg.removeAttribute('tabindex');
-					}
-					catch(err) {
-					}
-
-					nextImgIdx = imgIdx;
-
-					// 缩小图片以适应屏幕
-					fitImg(imgList[nextImgIdx]);
-
-					if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + nextImgIdx + "</br>Total:" + imgList.length + 
-										"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-										"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-										"</br>Original(HxW): " + imgList[nextImgIdx].getUserData("origH") + " x " + imgList[nextImgIdx].getUserData("origW") +
-										"</br>Resized(HxW): " + imgList[nextImgIdx].height + " x " + imgList[nextImgIdx].width); }
-
-					//滚动到图片
-					window.scrollTo(0, getY(imgList[nextImgIdx]) - userprefs.margin);
-
-					//标识当前图片
-					curImg = imgList[nextImgIdx];
-					imgList[nextImgIdx].setAttribute('tabIndex', 0);
-					curImgIdx = nextImgIdx;
-
-					// 寻找到图片并完成滚动，退出循环，等待下个keypress event
-					break;
+			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
+				getY(img) < (document.documentElement.scrollTop + userprefs.margin)) {
+				// 将之前浏览的那张图片的tabIndex属性清空
+				try	{
+					curImg.removeAttribute('tabIndex');
+				} catch(err) {
 				}
+
+				// 缩小图片以适应屏幕
+				fitImg(img);
+
+				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
+									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+									"</br>Original(HxW): " + img.getUserData("origH") + " x " + img.getUserData("origW") +
+									"</br>Resized(HxW): " + img.height + " x " + img.width); }
+
+				//滚动到图片
+				window.scrollTo(0, getY(img) - userprefs.margin);
+
+				//标识当前图片
+				curImg = img;
+				curImg.setAttribute('tabIndex', 0);
+
+				// 寻找到图片并完成滚动，退出循环，等待下个keypress event
+				break;
 			}
 		}
 
@@ -181,6 +165,7 @@ function fitImg(img)
 			img.width  = ADEQUATE_IMG_W;
 			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
 		}
+		img.classList.add("resized");
 	}
 }
 
@@ -195,8 +180,8 @@ function noticeMsg(html)
 			width: auto !important;\
 			height: auto !important;\
 			font-family: Segoe UI, Arial, Helvetica !important;\
-			font-size: 14px !important;\
-			padding: 3px 20px 2px 5px !important;\
+			font-size: 12px !important;\
+			padding: 2px 5px 2px 5px !important;\
 			background-color: #7f8f9c !important;\
 			border: none !important;\
 			color: #000 !important;\
@@ -219,9 +204,9 @@ function debugMsg(html)
 			float: none !important;\
 			width: auto !important;\
 			height: auto !important;\
-			font-family: Segoe UI, Arial, Helvetica !important;\
-			font-size: 14px !important;\
-			padding: 3px 20px 2px 5px !important;\
+			font-family: Arial, Helvetica !important;\
+			font-size: 12px !important;\
+			padding: 2px 5px 2px 5px !important;\
 			background-color: #7f8f9c !important;\
 			border: none !important;\
 			color: #000 !important;\
