@@ -37,6 +37,8 @@ var debugDIV;
 
 var imgList;
 var curImg;
+var curimgIdx;
+var nextImgIdx; // 指的要滚动到的下一张的图片的Idx，不是在list里面按顺序的下一张
 
 var initialized = false;
 
@@ -46,9 +48,10 @@ function init()
 {
 	if(!initialized) {
 		imgList = document.querySelectorAll("img");
-		curImg = document.querySelectorAll("img[tabindex]")[0];
+		curImg = document.querySelectorAll("img[tabIndex]")[0];
+		curImgIdx = 0;
 
-		addGlobalStyle('img[tabindex=0] { border: 3px !important; border-color: #7f8f9c !important;}');
+		addGlobalStyle('img[tabIndex=\"0\"] { border-style: solid !important; border-width: 6px !important; border-color: #7f8f9c !important;}');
 
 		initialized = true;
 	}
@@ -59,67 +62,104 @@ document.addEventListener('keypress', function(event) {
 	// if(DEBUG) { debugMsg(event.charCode); }
 	// if(event.charCode == userprefs.KEY_VIEW_ORIGIN) { document.location.href = curImg.src; }
 
-	if(event.charCode == userprefs.keyDown || event.charCode == userprefs.keyUP) {
-		for(imgIdx = 0; imgIdx < imgList.length; imgIdx++){
+	if(event.charCode == userprefs.keyDown) { // 向下浏览
+		for(imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
 			var img = imgList[imgIdx];
 
-			// 找到的第一个Y坐标大于页面的已卷过的高度+margin的图片，也就是当前正看到的图片。并且大小足够大
-			if(getY(img) > document.documentElement.scrollTop + userprefs.margin && (img.offsetWidth * img.offsetHeight) > (userprefs.minImgW * userprefs.minImgH)){
-				if(event.charCode == userprefs.keyDown) {
-					var scrollToImgIdx = imgIdx;
-				} else {
-					var scrollToImgIdx = imgIdx - 2; // 减2因为进入到这个for循环时imgIdx已经++了
-					alert(scrollToImgIdx);
+			// 忽略很小的图片
+			if((img.offsetWidth * img.offsetHeight) > (userprefs.minImgW * userprefs.minImgH)) {
+				// 当前位置图片
+				// alert("getY: " + getY(img) + "\ndocument.documentElement.scrollTop: " + document.documentElement.scrollTop);
+
+				// 寻找第一个正在当前可视区域的图片，从它开始浏览，而不是从第一个
+				if(getY(img) > document.documentElement.scrollTop + userprefs.margin) {
+					// 将之前浏览的那张图片的tabIndex属性清空
+					try	{
+						curImg.removeAttribute('tabindex');
+					}
+					catch(err) {
+					}
+
+					nextImgIdx = imgIdx;
+
+					// 缩小图片以适应屏幕
+					fitImg(imgList[nextImgIdx]);
+
+					if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + nextImgIdx + "</br>Total:" + imgList.length + 
+										"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+										"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+										"</br>Original(HxW): " + imgList[nextImgIdx].getUserData("origH") + " x " + imgList[nextImgIdx].getUserData("origW") +
+										"</br>Resized(HxW): " + imgList[nextImgIdx].height + " x " + imgList[nextImgIdx].width); }
+
+					//滚动到图片
+					window.scrollTo(0, getY(imgList[nextImgIdx]) - userprefs.margin);
+
+					//标识当前图片
+					curImg = imgList[nextImgIdx];
+					imgList[nextImgIdx].setAttribute('tabIndex', 0);
+					curImgIdx = nextImgIdx;
+
+					// 寻找到图片并完成滚动，退出循环，等待下个keypress event
+					break;
 				}
-
-				// 缩小图片以适应屏幕
-				fitImg(imgList[scrollToImgIdx]);
-
-				if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + scrollToImgIdx + "</br>Total:" + imgList.length + 
-									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-									"</br>Original(HxW): " + imgList[scrollToImgIdx].getUserData("origH") + " x " + imgList[scrollToImgIdx].getUserData("origW") +
-									"</br>Resized(HxW): " + imgList[scrollToImgIdx].height + " x " + imgList[scrollToImgIdx].width); }
-
-				//滚动到图片
-				window.scrollTo(0, getY(imgList[scrollToImgIdx]) - userprefs.margin);
-
-				//标识当前图片
-				try	{
-					curImg.removeAttribute('tabindex');
-					imgList[scrollToImgIdx].setAttribute('tabindex', 0);
-				}
-				catch(err) {
-					imgList[scrollToImgIdx].setAttribute('tabindex', 0);
-				}
-
-				// 完成一次滚动，退出循环
-				break;
 			}
-
-			// 到达最后一张图片，显示提示信息
-			/*
-			if(imgIdx == imgList.length - 1) {
-				document.getElementById("imgMessage").style.display = "inline";
-				var mTop=document.documentElement.scrollTop + 200
-				document.getElementById("imgMessage").style.top = mTop + "px";
-			}*/
-			//else if(imgList[imgIdx].offsetTop = document.documentElement.scrollTop){
-				//if(event.charCode==108){var scrollToImgIdx=imgIdx+2;}else{var scrollToImgIdx=imgIdx-1;}
-				//window.scrollTo(0,imgList[scrollToImgIdx].offsetTop);
-				//break;
-			//}
 		}
+	} else if (event.charCode == userprefs.keyUP) {
+		// 向上浏览
+		for(imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
+			var img = imgList[imgIdx];
+
+			/*if(DEBUG) { debugMsg("getY: " + getY(img) + 
+								"</br>img.offsetHeight: " + img.offsetHeight +
+								"</br>+ = " + (getY(img) + img.offsetHeight) +
+								"</br>document.documentElement.scrollTop: " + document.documentElement.scrollTop +
+								"</br>window.innerHeight: " + window.innerHeight +
+								"</br>+ = " + (document.documentElement.scrollTop + window.innerHeight)); }*/
+			// 反向遍历整个list，找到第一个正在当前可视区域的图片，从它开始浏览，而不是从第一个
+			if((img.offsetWidth * img.offsetHeight) > (userprefs.minImgW * userprefs.minImgH)) {
+				if(getY(img) < document.documentElement.scrollTop + userprefs.margin) {
+					// 将之前浏览的那张图片的tabIndex属性清空
+					try	{
+						curImg.removeAttribute('tabindex');
+					}
+					catch(err) {
+					}
+
+					nextImgIdx = imgIdx;
+
+					// 缩小图片以适应屏幕
+					fitImg(imgList[nextImgIdx]);
+
+					if(DEBUG) { debugMsg("Current: " + imgIdx + "</br>Scroll To: " + nextImgIdx + "</br>Total:" + imgList.length + 
+										"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+										"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+										"</br>Original(HxW): " + imgList[nextImgIdx].getUserData("origH") + " x " + imgList[nextImgIdx].getUserData("origW") +
+										"</br>Resized(HxW): " + imgList[nextImgIdx].height + " x " + imgList[nextImgIdx].width); }
+
+					//滚动到图片
+					window.scrollTo(0, getY(imgList[nextImgIdx]) - userprefs.margin);
+
+					//标识当前图片
+					curImg = imgList[nextImgIdx];
+					imgList[nextImgIdx].setAttribute('tabIndex', 0);
+					curImgIdx = nextImgIdx;
+
+					// 寻找到图片并完成滚动，退出循环，等待下个keypress event
+					break;
+				}
+			}
+		}
+
 	}
 }, true);
 
-// 对象的X坐标
+// 获得对象左边缘与整个页面左边缘的距离
 function getX(obj)
 {
 	return obj.offsetLeft + (obj.offsetParent ? getX(obj.offsetParent) : obj.x ? obj.x : 0);
 }
 
-// 对象的Y坐标
+// 获得对象顶部边缘与整个页面顶部边缘的距离
 function getY(obj)
 {
 	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
