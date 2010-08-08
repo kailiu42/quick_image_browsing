@@ -27,7 +27,7 @@ var userprefs = {
 	// The border color for hightlighting images that has been resized when browsing
 	resizedBorderColor : "#FF6666",
 	// The border width
-	borderWidth : "5px",
+	borderWidth : 5,
 };
 
 
@@ -40,7 +40,7 @@ var ADEQUATE_IMG_H = MAX_IMG_H - 10;
 var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
 // For display notice / debug messages
-var sizeNoticeDIV, naturalSizeSpan, origSizeSpan;
+var sizeNoticeDIV, fitSizeSpan, naturalSizeSpan, origSizeSpan;
 var debugDIV;
 
 var imgList, curImg, lastImg;
@@ -52,12 +52,9 @@ var $ = function(o){ return document.querySelectorAll(o); }
 function init()
 {
 	if(!initialized) {
-		imgList = document.querySelectorAll("img");
-		curImg = document.querySelectorAll("img[tabIndex]")[0];
-
-		addGlobalStyle("img[tabIndex=\"0\"] { border-style: solid !important; border-width: " + userprefs.borderWidth +
+		addGlobalStyle("img[tabIndex=\"0\"] { border-style: solid !important; border-width: " + userprefs.borderWidth + "px" +
 						" !important; border-color: " + userprefs.curBorderColor + " !important;}");
-		addGlobalStyle("img[tabIndex=\"0\"].resized { border-style: solid !important; border-width: " + userprefs.borderWidth +
+		addGlobalStyle("img[tabIndex=\"0\"].resized { border-style: solid !important; border-width: " + userprefs.borderWidth + "px" +
 						" !important; border-color: " + userprefs.resizedBorderColor + " !important;}");
 
 		initialized = true;
@@ -65,7 +62,13 @@ function init()
 }
 
 document.addEventListener('keypress', function(event) {
-	init();
+	if(event.charCode == userprefs.keyDown || event.charCode == userprefs.keyUp) { 
+		init();
+
+		// Initialize the imgList every time when key pressed so if page changed(like with autopager) we will find the new images.
+		imgList = document.querySelectorAll("img");
+		curImg = document.querySelectorAll("img[tabIndex]")[0];
+	}
 	// if(DEBUG) { debugMsg(event.charCode); }
 	// if(event.charCode == userprefs.KEY_VIEW_ORIGIN) { document.location.href = curImg.src; }
 
@@ -86,6 +89,8 @@ document.addEventListener('keypress', function(event) {
 				processImg(curImg);
 
 				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
+									"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
+									"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
 									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
 									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
 									"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
@@ -116,6 +121,8 @@ document.addEventListener('keypress', function(event) {
 				processImg(curImg);
 
 				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
+									"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
+									"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
 									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
 									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
 									"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
@@ -162,13 +169,14 @@ function processImg(img)
 			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
 		}
 
+		img.setUserData('adequateH', img.height, null);
+		img.setUserData('adequateW', img.width, null);
 		img.classList.add("resized");
-		displaySizeNoticeMsg(getX(img), getY(img));
-		img.addEventListener('mouseover', sizeNoticeMouseOver, false);
-		img.addEventListener('mouseout', sizeNoticeMouseOut, false);
 	}
 	img.setAttribute('tabIndex', 0);
-
+	displaySizeNoticeMsg(getX(img), getY(img));
+	img.addEventListener('mouseover', sizeNoticeMouseOver, false);
+	img.addEventListener('mouseout', sizeNoticeMouseOut, false);
 }
 
 function addGlobalStyle(css) {
@@ -193,9 +201,12 @@ function displaySizeNoticeMsg(left, top)
 								float: none !important;\
 								font-family: Arial, Helvetica !important;\
 								font-size: 12px !important;\
-								padding: 2px 2px 2px 2px !important;\
+								height: auto !important;\
+								width: auto !important;\
+								line-height: 14px !important;\
+								padding: 3px 1px 4px 1px!important;\
 								margin: 0px !important;\
-								border: none !important;\
+								border: 0 none !important;\
 								text-align: left !important;" +
 								"background-color: " + userprefs.curBorderColor + " !important;";
 
@@ -203,25 +214,48 @@ function displaySizeNoticeMsg(left, top)
 		sizeNoticeDIV.addEventListener('mouseover', sizeNoticeMouseOver, false);
 		sizeNoticeDIV.addEventListener('mouseout', sizeNoticeMouseOut, false);
 
+		// The "Fit Size" button in the float message
+		fitSizeSpan = document.createElement('span');
+		fitSizeSpan.style.cssText = "cursor: pointer !important;\
+										height: auto !important;\
+										width: auto !important;\
+										line-height: 16px !important;\
+										background-color: #F1F1F1 !important;\
+										border: 0 none !important;\
+										margin: 2px !important;\
+										padding: 1px 3px 1px 2px !important;\
+										display: none !important;";
+		fitSizeSpan.innerHTML = "Fit";
+		fitSizeSpan.addEventListener('click', fitBtnClick, false);
+		sizeNoticeDIV.appendChild(fitSizeSpan);
+
 		// The "Origin Size" button in the float message
 		origSizeSpan = document.createElement('span');
 		origSizeSpan.style.cssText = "cursor: pointer !important;\
+										height: auto !important;\
+										width: auto !important;\
+										line-height: 16px !important;\
 										background-color: #F1F1F1 !important;\
-										border: none !important;\
-										margin: 2px 2px 2px 1px !important;\
-										padding: 2px 3px 2px 3px !important;";
-		origSizeSpan.innerHTML = "Origin Size";
+										border: 0 none !important;\
+										margin: 2px !important;\
+										padding: 1px 2px 1px 2px !important;\
+										display: inline !important;";
+		origSizeSpan.innerHTML = "Origin";
 		origSizeSpan.addEventListener('click', origBtnClick, false);
 		sizeNoticeDIV.appendChild(origSizeSpan);
 
 		// The "Natural Size" button in the float message
 		naturalSizeSpan = document.createElement('span');
 		naturalSizeSpan.style.cssText = "cursor: pointer !important;\
+										height: auto !important;\
+										width: auto !important;\
+										line-height: 14px !important;\
 										background-color: #F1F1F1 !important;\
-										border: none !important;\
-										margin: 2px 1px 2px 2px !important;\
-										padding: 2px 3px 2px 3px !important;";
-		naturalSizeSpan.innerHTML = "Natual Size";
+										border: 0 none !important;\
+										margin: 2px !important;\
+										padding: 1px 2px 1px 2px !important;\
+										display: inline !important;";
+		naturalSizeSpan.innerHTML = "Natual";
 		naturalSizeSpan.addEventListener('click', naturalBtnClick, false);
 		sizeNoticeDIV.appendChild(naturalSizeSpan);
 	};
@@ -241,16 +275,40 @@ function sizeNoticeMouseOut()
 	sizeNoticeDIV.style.setProperty('display', 'none', 'important');
 }
 
+function fitBtnClick()
+{
+	curImg.height = curImg.getUserData("adequateH");
+	curImg.width = curImg.getUserData("adequateW");
+
+	fitSizeSpan.style.setProperty('display', 'none', 'important');
+	origSizeSpan.style.setProperty('display', 'inline', 'important');
+	naturalSizeSpan.style.setProperty('display', 'inline', 'important');
+
+	displaySizeNoticeMsg(getX(curImg), getY(curImg));
+}
+
 function origBtnClick()
 {
 	curImg.height = curImg.getUserData("origH");
 	curImg.width = curImg.getUserData("origW");
+
+	fitSizeSpan.style.setProperty('display', 'inline', 'important');
+	origSizeSpan.style.setProperty('display', 'none', 'important');
+	naturalSizeSpan.style.setProperty('display', 'inline', 'important');
+
+	displaySizeNoticeMsg(getX(curImg), getY(curImg));
 }
 
 function naturalBtnClick()
 {
 	curImg.height = curImg.naturalHeight;
 	curImg.width = curImg.naturalWidth;
+
+	fitSizeSpan.style.setProperty('display', 'inline', 'important');
+	origSizeSpan.style.setProperty('display', 'inline', 'important');
+	naturalSizeSpan.style.setProperty('display', 'none', 'important');
+
+	displaySizeNoticeMsg(getX(curImg), getY(curImg));
 }
 
 function cleanUpImg(img)
