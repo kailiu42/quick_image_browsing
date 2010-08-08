@@ -13,7 +13,11 @@ var userprefs = {
 	// Shortcut keys
 	keyUP : 107, // k
 	keyDown : 106, // j
-	KEY_VIEW_ORIGIN : 118, // v
+	keyFill : 102, // f
+	keyOrig : 111, // o
+	keyNatural : 110, // n
+	keyZoomOut : 122, // z
+	keyZoomIn : 105, // i
 
 	// When scroll to next image, the margin between image top edge to window top edge
 	margin : 25,
@@ -21,6 +25,10 @@ var userprefs = {
 	// Minimal image size. Image with smaller size will be skipped when browsing
 	minImgH : 300,
 	minImgW : 300,
+
+	// For zoom in and out
+	zoomOutStep : 1.25,
+	zoomInStep : 0.8,
 
 	// The border color for highlighting current image
 	curBorderColor : "#33AF44", //"#7F8F9C",
@@ -40,7 +48,7 @@ var ADEQUATE_IMG_H = MAX_IMG_H - 10;
 var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
 // For display notice / debug messages
-var sizeNoticeDIV, fitSizeSpan, naturalSizeSpan, origSizeSpan;
+var sizeNoticeDIV, fillSizeSpan, naturalSizeSpan, origSizeSpan;
 var alertDIV, debugDIV;
 var alertTimeoutID, debugTimeoutID;
 
@@ -108,7 +116,7 @@ document.addEventListener('keypress', function(event) {
 				alertMsg("Already last image!");
 			}
 		}
-	} else if (event.charCode == userprefs.keyUP) { // 向上浏览
+	} else if (event.charCode == userprefs.keyUP) { // Browsing from buttom to top
 		for(imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
 			var img = imgList[imgIdx];
 
@@ -143,7 +151,16 @@ document.addEventListener('keypress', function(event) {
 				alertMsg("Already first image!");
 			}
 		}
-
+	} else if (event.charCode == userprefs.keyFill) { // Set the size of current image to adequate size
+		fillBtnClick();
+	} else if (event.charCode == userprefs.keyOrig) { // Set the size of current image to original size
+		origBtnClick();
+	} else if (event.charCode == userprefs.keyNatural) { // Set the size of current image to natural size
+		naturalBtnClick();
+	} else if (event.charCode == userprefs.keyZoomOut) { // Zoom out current image
+		zoomOutBtnClick();
+	} else if (event.charCode == userprefs.keyZoomIn) { // Zoom in current image
+		zoomInBtnClick();
 	}
 }, true);
 
@@ -159,34 +176,6 @@ function getY(obj)
 	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
 }
 
-// Reduce image size
-function processImg(img)
-{
-	// Save the oringal H & W first for resize back by the resize buttons
-	img.setUserData('origH', img.height, null);
-	img.setUserData('origW', img.width, null);
-
-	// Reduce size if image is bigger than the view area
-	if(img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
-		// Scale according to the Height/Width comparing to the adequate size
-		if((img.height / img.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
-			img.height = ADEQUATE_IMG_H;
-			img.width  = ADEQUATE_IMG_H * img.getUserData("origW") / img.getUserData("origH");
-		} else {
-			img.width  = ADEQUATE_IMG_W;
-			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
-		}
-
-		img.setUserData('adequateH', img.height, null);
-		img.setUserData('adequateW', img.width, null);
-		img.classList.add("resized");
-	}
-	img.setAttribute('tabIndex', 0);
-	displaySizeNoticeMsg(getX(img), getY(img));
-	img.addEventListener('mouseover', sizeNoticeMouseOver, false);
-	img.addEventListener('mouseout', sizeNoticeMouseOut, false);
-}
-
 function addGlobalStyle(css) {
 	var head, style;
 
@@ -199,6 +188,45 @@ function addGlobalStyle(css) {
 	head.appendChild(style);
 }
 
+// Reduce image size
+function processImg(img)
+{
+	// Save the oringal H & W first for resize back by the resize buttons
+	if(img.getUserData('origH') == null) { img.setUserData('origH', img.height, null); }
+	if(img.getUserData('origW') == null) { img.setUserData('origW', img.width, null); }
+
+	// Reduce size if image is bigger than the view area
+	if(img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
+		// Scale down according to the Height/Width comparing to the adequate size
+		if((img.height / img.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
+			img.height = ADEQUATE_IMG_H;
+			img.width  = ADEQUATE_IMG_H * img.getUserData("origW") / img.getUserData("origH");
+		} else {
+			img.width  = ADEQUATE_IMG_W;
+			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
+		}
+
+		if(img.getUserData('adequateH') == null) { img.setUserData('adequateH', img.height, null); }
+		if(img.getUserData('adequateW') == null) { img.setUserData('adequateW', img.width, null); }
+		img.classList.add("resized");
+	}
+	img.setAttribute('tabIndex', 0);
+	displaySizeNoticeMsg(getX(img), getY(img));
+	img.addEventListener('mouseover', sizeNoticeMouseOver, false);
+	img.addEventListener('mouseout', sizeNoticeMouseOut, false);
+}
+
+function cleanUpImg(img)
+{
+	// Remove the tabIndex attribute, always set tabIndex=0 only on current viewing image
+	try	{
+		img.removeAttribute("tabIndex");
+		img.removeEventListener('mouseover', sizeNoticeMouseOver, false);
+		img.removeEventListener('mouseout', sizeNoticeMouseOut, false);
+	} catch(err) {
+	}
+}
+
 function displaySizeNoticeMsg(left, top)
 {
 	if(!sizeNoticeDIV) {
@@ -208,7 +236,7 @@ function displaySizeNoticeMsg(left, top)
 								z-index: 9999999999999 !important;\
 								float: none !important;\
 								font-family: Arial, Helvetica !important;\
-								font-size: 12px !important;\
+								font-size: 9pt !important;\
 								height: auto !important;\
 								width: auto !important;\
 								line-height: 14px !important;\
@@ -223,9 +251,9 @@ function displaySizeNoticeMsg(left, top)
 		sizeNoticeDIV.addEventListener('mouseover', sizeNoticeMouseOver, false);
 		sizeNoticeDIV.addEventListener('mouseout', sizeNoticeMouseOut, false);
 
-		// The "Fit Size" button in the float message
-		fitSizeSpan = document.createElement('span');
-		fitSizeSpan.style.cssText = "cursor: pointer !important;\
+		// The "Fill Size" button in the float message
+		fillSizeSpan = document.createElement('span');
+		fillSizeSpan.style.cssText = "cursor: pointer !important;\
 										height: auto !important;\
 										width: auto !important;\
 										line-height: 16px !important;\
@@ -233,10 +261,10 @@ function displaySizeNoticeMsg(left, top)
 										border: 0 none !important;\
 										margin: 2px !important;\
 										padding: 1px 3px 1px 2px !important;\
-										display: none !important;";
-		fitSizeSpan.innerHTML = "Fit";
-		fitSizeSpan.addEventListener('click', fitBtnClick, false);
-		sizeNoticeDIV.appendChild(fitSizeSpan);
+										display: inline !important;";
+		fillSizeSpan.innerHTML = "<u>F</u>ill";
+		fillSizeSpan.addEventListener('click', fillBtnClick, false);
+		sizeNoticeDIV.appendChild(fillSizeSpan);
 
 		// The "Origin Size" button in the float message
 		origSizeSpan = document.createElement('span');
@@ -249,7 +277,7 @@ function displaySizeNoticeMsg(left, top)
 										margin: 2px !important;\
 										padding: 1px 2px 1px 2px !important;\
 										display: inline !important;";
-		origSizeSpan.innerHTML = "Origin";
+		origSizeSpan.innerHTML = "<u>O</u>rig";
 		origSizeSpan.addEventListener('click', origBtnClick, false);
 		sizeNoticeDIV.appendChild(origSizeSpan);
 
@@ -264,9 +292,39 @@ function displaySizeNoticeMsg(left, top)
 										margin: 2px !important;\
 										padding: 1px 2px 1px 2px !important;\
 										display: inline !important;";
-		naturalSizeSpan.innerHTML = "Natual";
+		naturalSizeSpan.innerHTML = "<u>N</u>atual";
 		naturalSizeSpan.addEventListener('click', naturalBtnClick, false);
 		sizeNoticeDIV.appendChild(naturalSizeSpan);
+
+		// The "Zoom Out" button in the float message
+		zoomOutSizeSpan = document.createElement('span');
+		zoomOutSizeSpan.style.cssText = "cursor: pointer !important;\
+										height: auto !important;\
+										width: auto !important;\
+										line-height: 14px !important;\
+										background-color: #F1F1F1 !important;\
+										border: 0 none !important;\
+										margin: 2px !important;\
+										padding: 1px 2px 1px 2px !important;\
+										display: inline !important;";
+		zoomOutSizeSpan.innerHTML = "<u>Z</u> Out";
+		zoomOutSizeSpan.addEventListener('click', zoomOutBtnClick, false);
+		sizeNoticeDIV.appendChild(zoomOutSizeSpan);
+
+		// The "Zoom In" button in the float message
+		zoomInSizeSpan = document.createElement('span');
+		zoomInSizeSpan.style.cssText = "cursor: pointer !important;\
+										height: auto !important;\
+										width: auto !important;\
+										line-height: 14px !important;\
+										background-color: #F1F1F1 !important;\
+										border: 0 none !important;\
+										margin: 2px !important;\
+										padding: 1px 2px 1px 2px !important;\
+										display: inline !important;";
+		zoomInSizeSpan.innerHTML = "Z <u>I</u>n";
+		zoomInSizeSpan.addEventListener('click', zoomInBtnClick, false);
+		sizeNoticeDIV.appendChild(zoomInSizeSpan);
 	};
 
 	sizeNoticeDIV.style.setProperty('left', left + "px", 'important');
@@ -276,7 +334,7 @@ function displaySizeNoticeMsg(left, top)
 
 function sizeNoticeMouseOver()
 {
-	sizeNoticeDIV.style.setProperty('display', 'block', 'important');
+	sizeNoticeDIV.style.setProperty('display', 'inline', 'important');
 }
 
 function sizeNoticeMouseOut()
@@ -284,28 +342,31 @@ function sizeNoticeMouseOut()
 	sizeNoticeDIV.style.setProperty('display', 'none', 'important');
 }
 
-function fitBtnClick()
+function fillBtnClick()
 {
-	curImg.height = curImg.getUserData("adequateH");
-	curImg.width = curImg.getUserData("adequateW");
-
-	fitSizeSpan.style.setProperty('display', 'none', 'important');
-	origSizeSpan.style.setProperty('display', 'inline', 'important');
-	naturalSizeSpan.style.setProperty('display', 'inline', 'important');
-
+	if(curImg.getUserData("adequateH") != null && curImg.getUserData("adequateW") != null) { // Scale down
+		curImg.height = curImg.getUserData("adequateH");
+		curImg.width = curImg.getUserData("adequateW");
+	} else { // Scale up according to the Height/Width comparing to the adequate size
+		if((curImg.height / curImg.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
+			curImg.height = ADEQUATE_IMG_H;
+			curImg.width  = ADEQUATE_IMG_H * curImg.getUserData("origW") / curImg.getUserData("origH");
+		} else {
+			curImg.width  = ADEQUATE_IMG_W;
+			curImg.height = ADEQUATE_IMG_W * curImg.getUserData("origH") / curImg.getUserData("origW");
+		}
+	}
 	displaySizeNoticeMsg(getX(curImg), getY(curImg));
 }
 
 function origBtnClick()
 {
-	curImg.height = curImg.getUserData("origH");
-	curImg.width = curImg.getUserData("origW");
+	if(curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
+		curImg.height = curImg.getUserData("origH");
+		curImg.width = curImg.getUserData("origW");
 
-	fitSizeSpan.style.setProperty('display', 'inline', 'important');
-	origSizeSpan.style.setProperty('display', 'none', 'important');
-	naturalSizeSpan.style.setProperty('display', 'inline', 'important');
-
-	displaySizeNoticeMsg(getX(curImg), getY(curImg));
+		displaySizeNoticeMsg(getX(curImg), getY(curImg));
+	}
 }
 
 function naturalBtnClick()
@@ -313,22 +374,23 @@ function naturalBtnClick()
 	curImg.height = curImg.naturalHeight;
 	curImg.width = curImg.naturalWidth;
 
-	fitSizeSpan.style.setProperty('display', 'inline', 'important');
-	origSizeSpan.style.setProperty('display', 'inline', 'important');
-	naturalSizeSpan.style.setProperty('display', 'none', 'important');
+	displaySizeNoticeMsg(getX(curImg), getY(curImg));
+}
+
+function zoomOutBtnClick()
+{
+	curImg.height *= userprefs.zoomOutStep;
+	curImg.width  *= userprefs.zoomOutStep;
 
 	displaySizeNoticeMsg(getX(curImg), getY(curImg));
 }
 
-function cleanUpImg(img)
+function zoomInBtnClick()
 {
-	// Remove the tabIndex attribute, always set tabIndex=0 only on current viewing image
-	try	{
-		img.removeAttribute("tabIndex");
-		img.removeEventListener('mouseover', sizeNoticeMouseOver, false);
-		img.removeEventListener('mouseout', sizeNoticeMouseOut, false);
-	} catch(err) {
-	}
+	curImg.height *= userprefs.zoomInStep;
+	curImg.width  *= userprefs.zoomInStep;
+
+	displaySizeNoticeMsg(getX(curImg), getY(curImg));
 }
 
 function debugMsg(html)
