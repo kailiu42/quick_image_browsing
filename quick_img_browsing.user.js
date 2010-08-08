@@ -23,7 +23,7 @@ var userprefs = {
 	minImgW : 200,
 
 	// The border color for highlighting current image
-	curBorderColor : "#7F8F9C",
+	curBorderColor : "#33AF44", //"#7F8F9C",
 	// The border color for hightlighting images that has been resized when browsing
 	resizedBorderColor : "#FF6666",
 	// The border width
@@ -40,11 +40,10 @@ var ADEQUATE_IMG_H = MAX_IMG_H - 10;
 var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
 // For display notice / debug messages
-var noticeDIV;
+var sizeNoticeDIV, naturalSizeSpan, origSizeSpan;
 var debugDIV;
 
-var imgList;
-var curImg;
+var imgList, curImg, lastImg;
 
 var initialized = false;
 
@@ -55,7 +54,6 @@ function init()
 	if(!initialized) {
 		imgList = document.querySelectorAll("img");
 		curImg = document.querySelectorAll("img[tabIndex]")[0];
-		curImgIdx = 0;
 
 		addGlobalStyle("img[tabIndex=\"0\"] { border-style: solid !important; border-width: " + userprefs.borderWidth +
 						" !important; border-color: " + userprefs.curBorderColor + " !important;}");
@@ -78,27 +76,23 @@ document.addEventListener('keypress', function(event) {
 			// Ignore small images. Find the first image that top edege is under current viewport top edge
 			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
 				getY(img) > (document.documentElement.scrollTop + userprefs.margin)) {
-				// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
-				try	{
-					curImg.removeAttribute("tabIndex");
-				} catch(err) {
-				}
+				lastImg = curImg;
+				cleanUpImg(lastImg);
 
-				// Process image size
-				fitImg(img);
+				// Mark current viewing image
+				curImg = img;
+
+				// Process image size, add border, event listener etc.
+				processImg(curImg);
 
 				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
 									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
 									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-									"</br>Original(HxW): " + img.getUserData("origH") + " x " + img.getUserData("origW") +
-									"</br>Resized(HxW): " + img.height + " x " + img.width); }
+									"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
+									"</br>Resized(HxW): " + curImg.height + " x " + curImg.width); }
 
 				// Scroll to the proper position
-				window.scrollTo(0, getY(img) - userprefs.margin);
-
-				// Mark current viewing image
-				curImg = img;
-				curImg.setAttribute('tabIndex', 0);
+				window.scrollTo(0, getY(curImg) - userprefs.margin);
 
 				// Found the image, exit from the loop, wait for next keypress event
 				break;
@@ -112,26 +106,23 @@ document.addEventListener('keypress', function(event) {
 			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
 				getY(img) < (document.documentElement.scrollTop + userprefs.margin)) {
 				// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
-				try	{
-					curImg.removeAttribute('tabIndex');
-				} catch(err) {
-				}
+				lastImg = curImg;
+				cleanUpImg(lastImg);
 
-				// Process image size
-				fitImg(img);
+				// Mark current viewing image
+				curImg = img;
+
+				// Process image size, add border, event listener etc.
+				processImg(curImg);
 
 				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length + 
 									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
 									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-									"</br>Original(HxW): " + img.getUserData("origH") + " x " + img.getUserData("origW") +
-									"</br>Resized(HxW): " + img.height + " x " + img.width); }
+									"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
+									"</br>Resized(HxW): " + curImg.height + " x " + curImg.width); }
 
 				// Scroll to the proper position
-				window.scrollTo(0, getY(img) - userprefs.margin);
-
-				// Mark current viewing image
-				curImg = img;
-				curImg.setAttribute('tabIndex', 0);
+				window.scrollTo(0, getY(curImg) - userprefs.margin);
 
 				// Found the image, exit from the loop, wait for next keypress event
 				break;
@@ -154,23 +145,30 @@ function getY(obj)
 }
 
 // Reduce image size
-function fitImg(img)
+function processImg(img)
 {
-	img.setUserData('origH', img.height, null);
-	img.setUserData('origW', img.width, null);
-	//alert(img.getUserData('origH'));
-
+	// Reduce size if image is bigger than the view area
 	if(img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
-		// 根据长宽比来选择是按高还是宽来缩放
-		if((img.height / img.width) > (MAX_IMG_H / MAX_IMG_W)) {
+		// Save the oringal H & W first for resize back by the resize buttons
+		img.setUserData('origH', img.height, null);
+		img.setUserData('origW', img.width, null);
+
+		// Scale according to the Height/Width comparing to the adequate size
+		if((img.height / img.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
 			img.height = ADEQUATE_IMG_H;
 			img.width  = ADEQUATE_IMG_H * img.getUserData("origW") / img.getUserData("origH");
 		} else {
 			img.width  = ADEQUATE_IMG_W;
 			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
 		}
+
 		img.classList.add("resized");
+		displaySizeNoticeMsg(getX(img), getY(img));
+		img.addEventListener('mouseover', sizeNoticeMouseOver, false);
+		img.addEventListener('mouseout', sizeNoticeMouseOut, false);
 	}
+	img.setAttribute('tabIndex', 0);
+
 }
 
 function addGlobalStyle(css) {
@@ -185,52 +183,103 @@ function addGlobalStyle(css) {
 	head.appendChild(style);
 }
 
-function noticeMsg(html)
+function displaySizeNoticeMsg(left, top)
 {
-	if(!noticeDIV) {
-		noticeDIV = document.createElement('div');
-		noticeDIV.style.cssText = '\
-			position: fixed !important;\
-			z-index: 9999999999999 !important;\
-			float: none !important;\
-			width: auto !important;\
-			height: auto !important;\
-			font-family: Segoe UI, Arial, Helvetica !important;\
-			font-size: 12px !important;\
-			padding: 2px 5px 2px 5px !important;\
-			background-color: #33AF44 !important;\
-			border: none !important;\
-			color: #000 !important;\
-			text-align: left !important;\
-			right: 0 !important;\
-			bottom: 0 !important;\
-		';
-		document.body.appendChild(noticeDIV);
+	if(!sizeNoticeDIV) {
+		// The float message displayed at the top left corner when mouse is over a image
+		sizeNoticeDIV = document.createElement('div');
+		sizeNoticeDIV.style.cssText = "position: absolute !important;\
+								z-index: 9999999999999 !important;\
+								float: none !important;\
+								font-family: Arial, Helvetica !important;\
+								font-size: 12px !important;\
+								padding: 2px 2px 2px 2px !important;\
+								margin: 0px !important;\
+								border: none !important;\
+								text-align: left !important;" +
+								"background-color: " + userprefs.curBorderColor + " !important;";
+
+		document.body.appendChild(sizeNoticeDIV);
+		sizeNoticeDIV.addEventListener('mouseover', sizeNoticeMouseOver, false);
+		sizeNoticeDIV.addEventListener('mouseout', sizeNoticeMouseOut, false);
+
+		// The "Origin Size" button in the float message
+		origSizeSpan = document.createElement('span');
+		origSizeSpan.style.cssText = "cursor: pointer !important;\
+										background-color: #F1F1F1 !important;\
+										border: none !important;\
+										margin: 2px 2px 2px 1px !important;\
+										padding: 2px 3px 2px 3px !important;";
+		origSizeSpan.innerHTML = "Origin Size";
+		origSizeSpan.addEventListener('click', origBtnClick, false);
+		sizeNoticeDIV.appendChild(origSizeSpan);
+
+		// The "Natural Size" button in the float message
+		naturalSizeSpan = document.createElement('span');
+		naturalSizeSpan.style.cssText = "cursor: pointer !important;\
+										background-color: #F1F1F1 !important;\
+										border: none !important;\
+										margin: 2px 1px 2px 2px !important;\
+										padding: 2px 3px 2px 3px !important;";
+		naturalSizeSpan.innerHTML = "Natual Size";
+		naturalSizeSpan.addEventListener('click', naturalBtnClick, false);
+		sizeNoticeDIV.appendChild(naturalSizeSpan);
 	};
-	noticeDIV.innerHTML=html;
-};
+
+	sizeNoticeDIV.style.setProperty('left', left + "px", 'important');
+	sizeNoticeDIV.style.setProperty('top', top + "px", 'important');
+	sizeNoticeDIV.style.setProperty('display', 'block', 'important');
+}
+
+function sizeNoticeMouseOver()
+{
+	sizeNoticeDIV.style.setProperty('display', 'block', 'important');
+}
+
+function sizeNoticeMouseOut()
+{
+	sizeNoticeDIV.style.setProperty('display', 'none', 'important');
+}
+
+function origBtnClick()
+{
+	curImg.height = curImg.getUserData("origH");
+	curImg.width = curImg.getUserData("origW");
+}
+
+function naturalBtnClick()
+{
+	curImg.height = curImg.naturalHeight;
+	curImg.width = curImg.naturalWidth;
+}
+
+function cleanUpImg(img)
+{
+	// Remove the tabIndex attribute, always set tabIndex=0 only on current viewing image
+	try	{
+		img.removeAttribute("tabIndex");
+		img.removeEventListener('mouseover', sizeNoticeMouseOver, false);
+		img.removeEventListener('mouseout', sizeNoticeMouseOut, false);
+	} catch(err) {
+	}
+}
 
 function debugMsg(html)
 {
 	if(!debugDIV) {
 		debugDIV = document.createElement('div');
-		debugDIV.style.cssText = '\
-			position: fixed !important;\
-			z-index: 9999999999999 !important;\
-			float: none !important;\
-			width: auto !important;\
-			height: auto !important;\
-			font-family: Arial, Helvetica !important;\
-			font-size: 12px !important;\
-			padding: 2px 5px 2px 5px !important;\
-			background-color: #AF9C90 !important;\
-			border: none !important;\
-			color: #000 !important;\
-			text-align: left !important;\
-			right: 0 !important;\
-			bottom: 0 !important;\
-		';
+		debugDIV.style.cssText = "position: fixed !important;\
+								z-index: 9999999999999 !important;\
+								float: none !important;\
+								font-family: Arial, Helvetica !important;\
+								font-size: 12px !important;\
+								padding: 2px 5px 2px 5px !important;\
+								background-color: #AF9C90 !important;\
+								border: none !important;\
+								text-align: left !important;\
+								right: 0 !important;\
+								bottom: 0 !important;";
 		document.body.appendChild(debugDIV);
 	};
 	debugDIV.innerHTML = html;
-};
+}
