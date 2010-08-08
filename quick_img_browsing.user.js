@@ -19,8 +19,8 @@ var userprefs = {
 	margin : 25,
 
 	// Minimal image size. Image with smaller size will be skipped when browsing
-	minImgH : 200,
-	minImgW : 200,
+	minImgH : 300,
+	minImgW : 300,
 
 	// The border color for highlighting current image
 	curBorderColor : "#33AF44", //"#7F8F9C",
@@ -41,7 +41,8 @@ var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
 // For display notice / debug messages
 var sizeNoticeDIV, fitSizeSpan, naturalSizeSpan, origSizeSpan;
-var debugDIV;
+var alertDIV, debugDIV;
+var alertTimeoutID, debugTimeoutID;
 
 var imgList, curImg, lastImg;
 
@@ -79,6 +80,7 @@ document.addEventListener('keypress', function(event) {
 			// Ignore small images. Find the first image that top edege is under current viewport top edge
 			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
 				getY(img) > (document.documentElement.scrollTop + userprefs.margin)) {
+
 				lastImg = curImg;
 				cleanUpImg(lastImg);
 
@@ -101,6 +103,9 @@ document.addEventListener('keypress', function(event) {
 
 				// Found the image, exit from the loop, wait for next keypress event
 				break;
+			}
+			if(imgIdx == imgList.length - 1) {
+				alertMsg("Already last image!");
 			}
 		}
 	} else if (event.charCode == userprefs.keyUP) { // 向上浏览
@@ -134,6 +139,9 @@ document.addEventListener('keypress', function(event) {
 				// Found the image, exit from the loop, wait for next keypress event
 				break;
 			}
+			if(imgIdx == 0) {
+				alertMsg("Already first image!");
+			}
 		}
 
 	}
@@ -154,12 +162,12 @@ function getY(obj)
 // Reduce image size
 function processImg(img)
 {
+	// Save the oringal H & W first for resize back by the resize buttons
+	img.setUserData('origH', img.height, null);
+	img.setUserData('origW', img.width, null);
+
 	// Reduce size if image is bigger than the view area
 	if(img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
-		// Save the oringal H & W first for resize back by the resize buttons
-		img.setUserData('origH', img.height, null);
-		img.setUserData('origW', img.width, null);
-
 		// Scale according to the Height/Width comparing to the adequate size
 		if((img.height / img.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
 			img.height = ADEQUATE_IMG_H;
@@ -207,7 +215,8 @@ function displaySizeNoticeMsg(left, top)
 								padding: 3px 1px 4px 1px!important;\
 								margin: 0px !important;\
 								border: 0 none !important;\
-								text-align: left !important;" +
+								text-align: left !important;\
+								color: #666666 !important;" +
 								"background-color: " + userprefs.curBorderColor + " !important;";
 
 		document.body.appendChild(sizeNoticeDIV);
@@ -335,9 +344,47 @@ function debugMsg(html)
 								background-color: #AF9C90 !important;\
 								border: none !important;\
 								text-align: left !important;\
+								color: #303030 !important;\
 								right: 0 !important;\
 								bottom: 0 !important;";
 		document.body.appendChild(debugDIV);
 	};
 	debugDIV.innerHTML = html;
+	debugDIV.style.setProperty('display', 'inline', 'important');
+
+	if(typeof debugTimeoutID == "number") {
+		window.clearTimeout(debugTimeoutID);
+	}
+	debugTimeoutID = window.setTimeout(function() {
+		debugDIV.style.setProperty('display', 'none', 'important');
+	}, 5000);
+}
+
+function alertMsg(html)
+{
+	if(!alertDIV) {
+		alertDIV = document.createElement('div');
+		alertDIV.style.cssText = "position: fixed !important;\
+								z-index: 9999999999999 !important;\
+								float: none !important;\
+								font-family: Arial, Helvetica !important;\
+								font-size: 16px !important;\
+								padding: 2px 8px 2px 8px !important;\
+								border: none !important;\
+								text-align: left !important;\
+								color: black !important;\
+								left: 0 !important;\
+								bottom: 0 !important;" +
+								"background-color: " + userprefs.curBorderColor + " !important;";
+		document.body.appendChild(alertDIV);
+	};
+	alertDIV.innerHTML = html;
+	alertDIV.style.setProperty('display', 'inline', 'important');
+
+	if(typeof alertTimeoutID == "number") {
+		window.clearTimeout(alertTimeoutID);
+	}
+	alertTimeoutID = window.setTimeout(function() {
+		alertDIV.style.setProperty('display', 'none', 'important');
+	}, 2000);
 }
