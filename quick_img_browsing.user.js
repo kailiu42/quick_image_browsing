@@ -18,6 +18,7 @@ var userprefs = {
 	keyNatural : 110, // n
 	keyZoomOut : 122, // z
 	keyZoomIn : 105, // i
+	keyRotate : 114, // r
 
 	// When scroll to next image, the margin between image top edge to window top edge
 	margin : 25,
@@ -48,7 +49,7 @@ var ADEQUATE_IMG_H = MAX_IMG_H - 10;
 var ADEQUATE_IMG_W = MAX_IMG_W - 10;
 
 // For display notice / debug messages
-var sizeNoticeDIV, fillSizeSpan, naturalSizeSpan, origSizeSpan;
+var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan;
 var alertDIV, debugDIV;
 var alertTimeoutID, debugTimeoutID;
 
@@ -214,6 +215,8 @@ document.addEventListener("keypress", function(event) {
 		zoomOutBtnClick();
 	} else if (event.charCode == userprefs.keyZoomIn) { // Zoom in current image
 		zoomInBtnClick();
+	} else if (event.charCode == userprefs.keyRotate) { // Rotate current image
+		rotateBtnClick();
 	}
 }, true);
 
@@ -301,39 +304,46 @@ function displaySizeBtns(display, left, top)
 		sizeNoticeDIV.addEventListener("mouseout", sizeNoticeMouseOut, false);
 
 		// The "Fill Size" button in the float message
-		fillSizeSpan = document.createElement("span");
-		fillSizeSpan.className = "sizeBtnSpan";
-		fillSizeSpan.innerHTML = "<u>F</u>ill";
-		fillSizeSpan.addEventListener("click", fillBtnClick, false);
-		sizeNoticeDIV.appendChild(fillSizeSpan);
+		fillBtnSpan = document.createElement("span");
+		fillBtnSpan.className = "sizeBtnSpan";
+		fillBtnSpan.innerHTML = "<u>F</u>ill";
+		fillBtnSpan.addEventListener("click", fillBtnClick, false);
+		sizeNoticeDIV.appendChild(fillBtnSpan);
 
 		// The "Origin Size" button in the float message
-		origSizeSpan = document.createElement("span");
-		origSizeSpan.className = "sizeBtnSpan";
-		origSizeSpan.innerHTML = "<u>O</u>rig";
-		origSizeSpan.addEventListener("click", origBtnClick, false);
-		sizeNoticeDIV.appendChild(origSizeSpan);
+		origBtnSpan = document.createElement("span");
+		origBtnSpan.className = "sizeBtnSpan";
+		origBtnSpan.innerHTML = "<u>O</u>rig";
+		origBtnSpan.addEventListener("click", origBtnClick, false);
+		sizeNoticeDIV.appendChild(origBtnSpan);
 
 		// The "Natural Size" button in the float message
-		naturalSizeSpan = document.createElement("span");
-		naturalSizeSpan.className = "sizeBtnSpan";
-		naturalSizeSpan.innerHTML = "<u>N</u>atual";
-		naturalSizeSpan.addEventListener("click", naturalBtnClick, false);
-		sizeNoticeDIV.appendChild(naturalSizeSpan);
+		naturalBtnSpan = document.createElement("span");
+		naturalBtnSpan.className = "sizeBtnSpan";
+		naturalBtnSpan.innerHTML = "<u>N</u>atual";
+		naturalBtnSpan.addEventListener("click", naturalBtnClick, false);
+		sizeNoticeDIV.appendChild(naturalBtnSpan);
 
 		// The "Zoom Out" button in the float message
-		zoomOutSizeSpan = document.createElement("span");
-		zoomOutSizeSpan.className = "sizeBtnSpan";
-		zoomOutSizeSpan.innerHTML = "<u>Z</u> Out";
-		zoomOutSizeSpan.addEventListener("click", zoomOutBtnClick, false);
-		sizeNoticeDIV.appendChild(zoomOutSizeSpan);
+		zoomOutBtnSpan = document.createElement("span");
+		zoomOutBtnSpan.className = "sizeBtnSpan";
+		zoomOutBtnSpan.innerHTML = "<u>Z</u> Out";
+		zoomOutBtnSpan.addEventListener("click", zoomOutBtnClick, false);
+		sizeNoticeDIV.appendChild(zoomOutBtnSpan);
 
 		// The "Zoom In" button in the float message
-		zoomInSizeSpan = document.createElement("span");
-		zoomInSizeSpan.className = "sizeBtnSpan";
-		zoomInSizeSpan.innerHTML = "Z <u>I</u>n";
-		zoomInSizeSpan.addEventListener("click", zoomInBtnClick, false);
-		sizeNoticeDIV.appendChild(zoomInSizeSpan);
+		zoomInBtnSpan = document.createElement("span");
+		zoomInBtnSpan.className = "sizeBtnSpan";
+		zoomInBtnSpan.innerHTML = "Z <u>I</u>n";
+		zoomInBtnSpan.addEventListener("click", zoomInBtnClick, false);
+		sizeNoticeDIV.appendChild(zoomInBtnSpan);
+
+		// The "Rotate" button in the float message
+		rotateBtnSpan = document.createElement("span");
+		rotateBtnSpan.className = "sizeBtnSpan";
+		rotateBtnSpan.innerHTML = "<u>R</u>otate";
+		rotateBtnSpan.addEventListener("click", rotateBtnClick, false);
+		sizeNoticeDIV.appendChild(rotateBtnSpan);
 	};
 
 	sizeNoticeDIV.style.setProperty("left", left + "px", "important");
@@ -410,6 +420,22 @@ function zoomInBtnClick()
 	var curW = curImg.width;
 	curImg.height = curH * userprefs.zoomInStep;
 	curImg.width  = curW * userprefs.zoomInStep;
+
+	displaySizeBtns(true, getX(curImg), getY(curImg));
+}
+
+function rotateBtnClick()
+{
+	// Rotate 90 degrees clockwise each time
+	if(curImg.style.getPropertyValue("-moz-transform") == "rotate(90deg)") {
+		curImg.style.setProperty("-moz-transform", "rotate(180deg)", "important");
+	} else if(curImg.style.getPropertyValue("-moz-transform") == "rotate(180deg)") {
+		curImg.style.setProperty("-moz-transform", "rotate(270deg)", "important");
+	} else if(curImg.style.getPropertyValue("-moz-transform") == "rotate(270deg)") {
+		curImg.style.removeProperty("-moz-transform");
+	} else {
+		curImg.style.setProperty("-moz-transform", "rotate(90deg)", "important");
+	}
 
 	displaySizeBtns(true, getX(curImg), getY(curImg));
 }
