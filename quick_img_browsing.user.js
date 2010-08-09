@@ -388,16 +388,28 @@ function naturalBtnClick()
 
 function zoomOutBtnClick()
 {
-	curImg.height *= userprefs.zoomOutStep;
-	curImg.width  *= userprefs.zoomOutStep;
+	// Some site use javascript to ensure proportional scaling of the image. So need to save the current H/W first before change any of them
+	// If the code is like this:
+	// curImg.height *= userprefs.zoomOutStep;
+	// curImg.width  *= userprefs.zoomOutStep;
+	// Then when height is changed first the width actually is increased accordingly, and then get increased again, thus give a non-proportional scaled image
+
+	var curH = curImg.height;
+	var curW = curImg.width;
+	curImg.height = curH * userprefs.zoomOutStep;
+	curImg.width  = curW * userprefs.zoomOutStep;
 
 	displaySizeBtns(true, getX(curImg), getY(curImg));
 }
 
 function zoomInBtnClick()
 {
-	curImg.height *= userprefs.zoomInStep;
-	curImg.width  *= userprefs.zoomInStep;
+	// See zoom out code above
+
+	var curH = curImg.height;
+	var curW = curImg.width;
+	curImg.height = curH * userprefs.zoomInStep;
+	curImg.width  = curW * userprefs.zoomInStep;
 
 	displaySizeBtns(true, getX(curImg), getY(curImg));
 }
