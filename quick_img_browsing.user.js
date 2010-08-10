@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		1.0
+// @version		1.1.1
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -78,7 +78,7 @@ function init()
 										"height: auto !important; ",
 										"width: auto !important; ",
 										"line-height: 16px !important; ",
-										"padding: 3px 1px 4px 1px!important; ",
+										"padding: 3px 2px 4px 1px!important; ",
 										"margin: 0px !important; ",
 										"border: 0 none !important; ",
 										"text-align: left !important; ",
@@ -91,7 +91,7 @@ function init()
 										"line-height: 16px !important; ",
 										"background-color: #F1F1F1 !important; ",
 										"border: 0 none !important; ",
-										"margin: 2px !important; ",
+										"margin: 2px 1px 2px 2px !important; ",
 										"padding: 1px 3px 1px 2px !important; }"].join(""));
 
 		GM_addStyle(["div.debugDIV { position: fixed !important; ",
@@ -99,6 +99,7 @@ function init()
 									"float: none !important; ",
 									"font-family: Arial, Helvetica !important; ",
 									"font-size: 12px !important; ",
+									"line-height: 16px !important; ",
 									"padding: 2px 5px 2px 5px !important; ",
 									"background-color: #AF9C90 !important; ",
 									"border: none !important; ",
@@ -286,7 +287,7 @@ function processImg(img)
 	img.addEventListener("mouseout", sizeNoticeMouseOut, false);
 
 	// Setup the size buttons but do not display them untill mouse over
-	displaySizeBtns(false, getX(img), getY(img));
+	displaySizeNotice(false, getX(img), getY(img));
 }
 
 function cleanUpImg(img)
@@ -300,7 +301,7 @@ function cleanUpImg(img)
 	}
 }
 
-function displaySizeBtns(display, left, top)
+function displaySizeNotice(display, left, top)
 {
 	if (!sizeNoticeDIV) {
 		// The float message displayed at the top left corner when mouse is over a image
@@ -311,53 +312,13 @@ function displaySizeBtns(display, left, top)
 		sizeNoticeDIV.addEventListener("mouseout", sizeNoticeMouseOut, false);
 
 		// The "Fill Size" button in the float message
-		fillBtnSpan = document.createElement("span");
-		fillBtnSpan.className = "sizeBtnSpan";
-		fillBtnSpan.innerHTML = "<u>F</u>ill";
-		fillBtnSpan.addEventListener("click", fillBtnClick, false);
-		sizeNoticeDIV.appendChild(fillBtnSpan);
-
-		// The "Origin Size" button in the float message
-		origBtnSpan = document.createElement("span");
-		origBtnSpan.className = "sizeBtnSpan";
-		origBtnSpan.innerHTML = "<u>O</u>rig";
-		origBtnSpan.addEventListener("click", origBtnClick, false);
-		sizeNoticeDIV.appendChild(origBtnSpan);
-
-		// The "Natural Size" button in the float message
-		naturalBtnSpan = document.createElement("span");
-		naturalBtnSpan.className = "sizeBtnSpan";
-		naturalBtnSpan.innerHTML = "<u>N</u>atual";
-		naturalBtnSpan.addEventListener("click", naturalBtnClick, false);
-		sizeNoticeDIV.appendChild(naturalBtnSpan);
-
-		// The "Zoom Out" button in the float message
-		zoomOutBtnSpan = document.createElement("span");
-		zoomOutBtnSpan.className = "sizeBtnSpan";
-		zoomOutBtnSpan.innerHTML = "<u>Z</u> Out";
-		zoomOutBtnSpan.addEventListener("click", zoomOutBtnClick, false);
-		sizeNoticeDIV.appendChild(zoomOutBtnSpan);
-
-		// The "Zoom In" button in the float message
-		zoomInBtnSpan = document.createElement("span");
-		zoomInBtnSpan.className = "sizeBtnSpan";
-		zoomInBtnSpan.innerHTML = "Z <u>I</u>n";
-		zoomInBtnSpan.addEventListener("click", zoomInBtnClick, false);
-		sizeNoticeDIV.appendChild(zoomInBtnSpan);
-
-		// The "Rotate" button in the float message
-		rotateBtnSpan = document.createElement("span");
-		rotateBtnSpan.className = "sizeBtnSpan";
-		rotateBtnSpan.innerHTML = "<u>R</u>otate";
-		rotateBtnSpan.addEventListener("click", rotateBtnClick, false);
-		sizeNoticeDIV.appendChild(rotateBtnSpan);
-
-		// The "View in new tab" button in the float message
-		viewBtnSpan = document.createElement("span");
-		viewBtnSpan.className = "sizeBtnSpan";
-		viewBtnSpan.innerHTML = "<u>V</u>iew";
-		viewBtnSpan.addEventListener("click", viewBtnClick, false);
-		sizeNoticeDIV.appendChild(viewBtnSpan);
+		fillBtnSpan		= createBtn("<u>F</u>ill", fillBtnClick); // Fill image to adequate
+		origBtnSpan		= createBtn("<u>O</u>rig", origBtnClick); // Scale to original size appointed in web page
+		naturalBtnSpan	= createBtn("<u>N</u>atual", naturalBtnClick); // Scale to its natural size
+		zoomOutBtnSpan	= createBtn("<u>Z</u> Out", zoomOutBtnClick); // Zoom out by zoomOutStep
+		zoomInBtnSpan	= createBtn("Z <u>I</u>n", zoomInBtnClick); // Zoom n by zoomInStep
+		rotateBtnSpan	= createBtn("<u>R</u>otate", rotateBtnClick); // Rotate 90 degrees clockwise
+		viewBtnSpan		= createBtn("<u>V</u>iew", viewBtnClick); // View image in a new tab
 	};
 
 	sizeNoticeDIV.style.setProperty("left", left + "px", "important");
@@ -375,6 +336,19 @@ function sizeNoticeMouseOut()
 	sizeNoticeDIV.style.setProperty("display", "none", "important");
 }
 
+function createBtn(html, func)
+{
+	// html: button label
+	// func: the function to call when clicked
+	var btn = document.createElement("span");
+	btn.className = "sizeBtnSpan";
+	btn.innerHTML = html;
+	btn.addEventListener("click", func, false);
+	sizeNoticeDIV.appendChild(btn);
+
+	return btn;
+}
+
 function fillBtnClick()
 {
 	// Scale according to the H/W ratio comparing to the adequate size
@@ -385,7 +359,7 @@ function fillBtnClick()
 		curImg.width  = ADEQUATE_IMG_W;
 		curImg.height = ADEQUATE_IMG_W * curImg.getUserData("origH") / curImg.getUserData("origW");
 	}
-	displaySizeBtns(true, getX(curImg), getY(curImg));
+	displaySizeNotice(true, getX(curImg), getY(curImg));
 }
 
 function origBtnClick()
@@ -394,7 +368,7 @@ function origBtnClick()
 		curImg.height = curImg.getUserData("origH");
 		curImg.width = curImg.getUserData("origW");
 
-		displaySizeBtns(true, getX(curImg), getY(curImg));
+		displaySizeNotice(true, getX(curImg), getY(curImg));
 	}
 }
 
@@ -403,7 +377,7 @@ function naturalBtnClick()
 	curImg.height = curImg.naturalHeight;
 	curImg.width = curImg.naturalWidth;
 
-	displaySizeBtns(true, getX(curImg), getY(curImg));
+	displaySizeNotice(true, getX(curImg), getY(curImg));
 }
 
 function zoomOutBtnClick()
@@ -419,7 +393,7 @@ function zoomOutBtnClick()
 	curImg.height = curH * userprefs.zoomOutStep;
 	curImg.width  = curW * userprefs.zoomOutStep;
 
-	displaySizeBtns(true, getX(curImg), getY(curImg));
+	displaySizeNotice(true, getX(curImg), getY(curImg));
 }
 
 function zoomInBtnClick()
@@ -430,7 +404,7 @@ function zoomInBtnClick()
 	curImg.height = curH * userprefs.zoomInStep;
 	curImg.width  = curW * userprefs.zoomInStep;
 
-	displaySizeBtns(true, getX(curImg), getY(curImg));
+	displaySizeNotice(true, getX(curImg), getY(curImg));
 }
 
 function rotateBtnClick()
@@ -446,7 +420,7 @@ function rotateBtnClick()
 		curImg.style.setProperty("-moz-transform", "rotate(90deg)", "important");
 	}
 
-	displaySizeBtns(true, getX(curImg), getY(curImg));
+	displaySizeNotice(true, getX(curImg), getY(curImg));
 }
 
 function viewBtnClick()
