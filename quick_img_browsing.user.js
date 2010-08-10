@@ -162,12 +162,12 @@ document.addEventListener("keypress", function(event) {
 				processImg(curImg);
 
 				debugMsg("Image: " + imgIdx + " / " + imgList.length +
-						"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
-						"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
-						"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-						"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-						"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
-						"</br>Resized(HxW): " + curImg.height + " x " + curImg.width);
+						"<br/>.X/.Y: " + curImg.x + " / " + curImg.y +
+						"<br/>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
+						"<br/>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+						"<br/>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+						"<br/>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
+						"<br/>Resized(HxW): " + curImg.height + " x " + curImg.width);
 
 				// Scroll to the proper position
 				window.scrollTo(0, getY(curImg) - userprefs.margin);
@@ -197,12 +197,12 @@ document.addEventListener("keypress", function(event) {
 				processImg(curImg);
 
 				debugMsg("Image: " + imgIdx + " / " + imgList.length +
-						"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
-						"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
-						"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-						"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-						"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
-						"</br>Resized(HxW): " + curImg.height + " x " + curImg.width);
+						"<br/>.X/.Y: " + curImg.x + " / " + curImg.y +
+						"<br/>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
+						"<br/>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+						"<br/>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+						"<br/>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
+						"<br/>Resized(HxW): " + curImg.height + " x " + curImg.width);
 
 				// Scroll to the proper position
 				window.scrollTo(0, getY(curImg) - userprefs.margin);
