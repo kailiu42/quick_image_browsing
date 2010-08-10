@@ -10,7 +10,7 @@
 // @exclude		http*://mail.google.com/*
 // ==/UserScript==
 
-var DEBUG = true;
+const DEBUG = true;
 
 // User customizable preferences
 var userprefs = {
@@ -23,6 +23,7 @@ var userprefs = {
 	keyZoomOut : 122, // z
 	keyZoomIn : 105, // i
 	keyRotate : 114, // r
+	keyViewInNewTab : 118, // v
 
 	// When scroll to next image, the margin between image top edge to window top edge
 	margin : 25,
@@ -43,17 +44,14 @@ var userprefs = {
 	borderWidth : 5,
 };
 
-
 // Max image size. Image with larger size(either larger height or width) will be resized
-MAX_IMG_H = self.innerHeight - 2 * userprefs.margin; // If the image is in a frame, "self" get the size of the frame. If use window.innerHeight will get size of top level window
-MAX_IMG_W = self.innerWidth - 2 * userprefs.margin;
+var MAX_IMG_H, MAX_IMG_W;
 
 // When the size of a image is lager than the max size above, reduce it to below size
-var ADEQUATE_IMG_H = MAX_IMG_H - 10;
-var ADEQUATE_IMG_W = MAX_IMG_W - 10;
+var ADEQUATE_IMG_H, ADEQUATE_IMG_W;
 
-// For display notice / debug messages
-var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan;
+// For display alert / debug messages
+var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan;
 var alertDIV, debugDIV;
 var alertTimeoutID, debugTimeoutID;
 
@@ -61,90 +59,96 @@ var imgList, curImg, lastImg;
 
 var initialized = false;
 
-var $ = function(o){ return document.querySelectorAll(o); }
-
 function init()
 {
-	if(!initialized) {
-		addGlobalStyle("img[tabIndex='0'] { border-style: solid !important; " +
-											"border-width: " + userprefs.borderWidth + "px" + " !important; " +
-											"border-color: " + userprefs.curBorderColor + " !important; }");
+	if (!initialized) {
+		GM_addStyle(["img[tabIndex='0'] { border-style: solid !important; ",
+											"border-width: ", userprefs.borderWidth, "px", " !important; ", 
+											"border-color: ", userprefs.curBorderColor, " !important; }"].join(""));
 
-		addGlobalStyle("img[tabIndex=\"0\"].resized { border-style: solid !important; " +
-													"border-width: " + userprefs.borderWidth + "px" + " !important; " +
-													"border-color: " + userprefs.resizedBorderColor + " !important; }");
+		GM_addStyle(["img[tabIndex=\"0\"].resized { border-style: solid !important; ", 
+													"border-width: ", userprefs.borderWidth, "px", " !important; ",
+													"border-color: ", userprefs.resizedBorderColor, " !important; }"].join(""));
 
-		addGlobalStyle("div.sizeNoticeDIV { position: absolute !important; " +
-										"z-index: 2147483647 !important; " +
-										"float: none !important; " +
-										"font-family: Arial, Helvetica !important; " +
-										"font-size: 9pt !important; " +
-										"height: auto !important; " +
-										"width: auto !important; " +
-										"line-height: 16px !important; " +
-										"padding: 3px 1px 4px 1px!important; " +
-										"margin: 0px !important; " +
-										"border: 0 none !important; " +
-										"text-align: left !important; " +
-										"color: #666666 !important;" +
-										"background-color: " + userprefs.curBorderColor + " !important; }");
+		GM_addStyle(["div.sizeNoticeDIV { position: absolute !important; ",
+										"z-index: 2147483647 !important; ",
+										"float: none !important; ",
+										"font-family: Arial, Helvetica !important; ",
+										"font-size: 9pt !important; ",
+										"height: auto !important; ",
+										"width: auto !important; ",
+										"line-height: 16px !important; ",
+										"padding: 3px 1px 4px 1px!important; ",
+										"margin: 0px !important; ",
+										"border: 0 none !important; ",
+										"text-align: left !important; ",
+										"color: #666666 !important;",
+										"background-color: ", userprefs.curBorderColor, " !important; }"].join(""));
 
-		addGlobalStyle("span.sizeBtnSpan { cursor: pointer !important; " +
-										"height: auto !important; " +
-										"width: auto !important; " +
-										"line-height: 16px !important; " +
-										"background-color: #F1F1F1 !important; " +
-										"border: 0 none !important; " +
-										"margin: 2px !important; " +
-										"padding: 1px 3px 1px 2px !important; }");
+		GM_addStyle(["span.sizeBtnSpan { cursor: pointer !important; ",
+										"height: auto !important; ",
+										"width: auto !important; ",
+										"line-height: 16px !important; ",
+										"background-color: #F1F1F1 !important; ",
+										"border: 0 none !important; ",
+										"margin: 2px !important; ",
+										"padding: 1px 3px 1px 2px !important; }"].join(""));
 
-		addGlobalStyle("div.debugDIV { position: fixed !important; " +
-									"z-index: 2147483647 !important; " +
-									"float: none !important; " +
-									"font-family: Arial, Helvetica !important; " +
-									"font-size: 12px !important; " +
-									"padding: 2px 5px 2px 5px !important; " +
-									"background-color: #AF9C90 !important; " +
-									"border: none !important; " +
-									"text-align: left !important; " +
-									"color: #303030 !important; " +
-									"right: 0 !important; " +
-									"bottom: 0 !important; }");
+		GM_addStyle(["div.debugDIV { position: fixed !important; ",
+									"z-index: 2147483647 !important; ",
+									"float: none !important; ",
+									"font-family: Arial, Helvetica !important; ",
+									"font-size: 12px !important; ",
+									"padding: 2px 5px 2px 5px !important; ",
+									"background-color: #AF9C90 !important; ",
+									"border: none !important; ",
+									"text-align: left !important; ",
+									"color: #303030 !important; ",
+									"right: 0 !important; ",
+									"bottom: 0 !important; }"].join(""));
 
-		addGlobalStyle("div.alertDIV { position: fixed !important; " +
-									"z-index: 2147483647 !important; " +
-									"float: none !important; " +
-									"font-family: Arial, Helvetica !important; " +
-									"font-size: 16px !important; " +
-									"padding: 2px 8px 2px 8px !important; " +
-									"border: none !important; " +
-									"text-align: left !important; " +
-									"color: black !important; " +
-									"left: 0 !important; " +
-									"bottom: 0 !important;" +
-									"background-color: " + userprefs.curBorderColor + " !important; }");
+		GM_addStyle(["div.alertDIV { position: fixed !important; ",
+									"z-index: 2147483647 !important; ",
+									"float: none !important; ",
+									"font-family: Arial, Helvetica !important; ",
+									"font-size: 16px !important; ",
+									"padding: 2px 8px 2px 8px !important; ",
+									"border: none !important; ",
+									"text-align: left !important; ",
+									"color: black !important; ",
+									"left: 0 !important; ",
+									"bottom: 0 !important;",
+									"background-color: ", userprefs.curBorderColor, " !important; }"].join(""));
 
 		initialized = true;
 	}
 }
 
+// When the window loaded or resized, calculate the max and adequate size
+window.addEventListener("load", calSize, true);
+window.addEventListener("resize", calSize, true);
+
 document.addEventListener("keypress", function(event) {
-	if(event.charCode == userprefs.keyDown || event.charCode == userprefs.keyUp) {
+	// If currently key pressed in a input, select or textarea, do nothing
+	var curElement = document.activeElement.tagName.toLowerCase();
+	if (curElement == "input" || curElement == "select" || curElement == "textarea") {
+		return;
+	}
+
+	if (event.charCode == userprefs.keyDown || event.charCode == userprefs.keyUp) {
 		init();
 
 		// Initialize the imgList every time when key pressed so if page changed(like with autopager) we will find the new images.
 		imgList = document.querySelectorAll("img");
 		curImg = document.querySelectorAll("img[tabIndex]")[0];
 	}
-	// if(DEBUG) { debugMsg(event.charCode); }
-	// if(event.charCode == userprefs.KEY_VIEW_ORIGIN) { document.location.href = curImg.src; }
 
-	if(event.charCode == userprefs.keyDown) { // Browsing from top to bottom
+	if (event.charCode == userprefs.keyDown) { // Browsing from top to bottom
 		for(imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
 			var img = imgList[imgIdx];
 
 			// Ignore small images. Find the first image that top edege is under current viewport top edge
-			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
+			if ((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
 				getY(img) > (document.documentElement.scrollTop + userprefs.margin)) {
 
 				lastImg = curImg;
@@ -156,13 +160,13 @@ document.addEventListener("keypress", function(event) {
 				// Process image size, add border, event listener etc.
 				processImg(curImg);
 
-				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length +
-									"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
-									"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
-									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-									"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
-									"</br>Resized(HxW): " + curImg.height + " x " + curImg.width); }
+				debugMsg("Image: " + imgIdx + " / " + imgList.length +
+						"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
+						"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
+						"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+						"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+						"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
+						"</br>Resized(HxW): " + curImg.height + " x " + curImg.width);
 
 				// Scroll to the proper position
 				window.scrollTo(0, getY(curImg) - userprefs.margin);
@@ -170,7 +174,7 @@ document.addEventListener("keypress", function(event) {
 				// Found the image, exit from the loop, wait for next keypress event
 				break;
 			}
-			if(imgIdx == imgList.length - 1) {
+			if (imgIdx == imgList.length - 1) {
 				alertMsg("Already last image!");
 			}
 		}
@@ -179,7 +183,7 @@ document.addEventListener("keypress", function(event) {
 			var img = imgList[imgIdx];
 
 			// Ignore small images. In reserved order, find the first image that top edege is just beyond current viewport top edge
-			if((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
+			if ((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
 				getY(img) < (document.documentElement.scrollTop + userprefs.margin)) {
 				// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 				lastImg = curImg;
@@ -191,13 +195,13 @@ document.addEventListener("keypress", function(event) {
 				// Process image size, add border, event listener etc.
 				processImg(curImg);
 
-				if(DEBUG) { debugMsg("Image: " + imgIdx + " / " + imgList.length +
-									"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
-									"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
-									"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-									"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-									"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
-									"</br>Resized(HxW): " + curImg.height + " x " + curImg.width); }
+				debugMsg("Image: " + imgIdx + " / " + imgList.length +
+						"</br>.X/.Y: " + curImg.x + " / " + curImg.y +
+						"</br>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
+						"</br>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
+						"</br>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
+						"</br>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
+						"</br>Resized(HxW): " + curImg.height + " x " + curImg.width);
 
 				// Scroll to the proper position
 				window.scrollTo(0, getY(curImg) - userprefs.margin);
@@ -205,7 +209,7 @@ document.addEventListener("keypress", function(event) {
 				// Found the image, exit from the loop, wait for next keypress event
 				break;
 			}
-			if(imgIdx == 0) {
+			if (imgIdx == 0) {
 				alertMsg("Already first image!");
 			}
 		}
@@ -221,8 +225,21 @@ document.addEventListener("keypress", function(event) {
 		zoomInBtnClick();
 	} else if (event.charCode == userprefs.keyRotate) { // Rotate current image
 		rotateBtnClick();
+	} else if (event.charCode == userprefs.keyViewInNewTab) { // Open image in a new tab
+		viewBtnClick();
 	}
 }, true);
+
+function calSize()
+{
+	// Max image size. Image with larger size(either larger height or width) will be resized
+	MAX_IMG_H = self.innerHeight - 2 * userprefs.margin; // If the image is in a frame, "self" get the size of the frame. If use window.innerHeight will get size of top level window
+	MAX_IMG_W = self.innerWidth - 2 * userprefs.margin;
+
+	// When the size of a image is lager than the max size above, reduce it to below size
+	ADEQUATE_IMG_H = MAX_IMG_H - 10;
+	ADEQUATE_IMG_W = MAX_IMG_W - 10;
+}
 
 // Get the distance between left edge of the page to left edge of the object
 function getX(obj)
@@ -236,29 +253,17 @@ function getY(obj)
 	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
 }
 
-function addGlobalStyle(css) {
-	var head, style;
-
-	head = document.getElementsByTagName("head")[0];
-	if (!head) { return; }
-
-	style = document.createElement("style");
-	style.type = "text/css";
-	style.innerHTML = css;
-	head.appendChild(style);
-}
-
 // Reduce image size
 function processImg(img)
 {
 	// Save the oringal H & W first for resize back by the resize buttons
-	if(img.getUserData("origH") == null) { img.setUserData("origH", img.height, null); }
-	if(img.getUserData("origW") == null) { img.setUserData("origW", img.width, null); }
+	if (img.getUserData("origH") == null) { img.setUserData("origH", img.height, null); }
+	if (img.getUserData("origW") == null) { img.setUserData("origW", img.width, null); }
 
 	// Reduce size if image is bigger than the view area
-	if(img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
+	if (img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
 		// Scale down according to the Height/Width comparing to the adequate size
-		if((img.height / img.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
+		if ((img.height / img.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
 			img.height = ADEQUATE_IMG_H;
 			img.width  = ADEQUATE_IMG_H * img.getUserData("origW") / img.getUserData("origH");
 		} else {
@@ -266,8 +271,6 @@ function processImg(img)
 			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
 		}
 
-		if(img.getUserData("adequateH") == null) { img.setUserData("adequateH", img.height, null); }
-		if(img.getUserData("adequateW") == null) { img.setUserData("adequateW", img.width, null); }
 		img.classList.add("resized");
 	}
 
@@ -299,7 +302,7 @@ function cleanUpImg(img)
 
 function displaySizeBtns(display, left, top)
 {
-	if(!sizeNoticeDIV) {
+	if (!sizeNoticeDIV) {
 		// The float message displayed at the top left corner when mouse is over a image
 		sizeNoticeDIV = document.createElement("div");
 		sizeNoticeDIV.className = "sizeNoticeDIV";
@@ -348,6 +351,13 @@ function displaySizeBtns(display, left, top)
 		rotateBtnSpan.innerHTML = "<u>R</u>otate";
 		rotateBtnSpan.addEventListener("click", rotateBtnClick, false);
 		sizeNoticeDIV.appendChild(rotateBtnSpan);
+
+		// The "View in new tab" button in the float message
+		viewBtnSpan = document.createElement("span");
+		viewBtnSpan.className = "sizeBtnSpan";
+		viewBtnSpan.innerHTML = "<u>V</u>iew";
+		viewBtnSpan.addEventListener("click", viewBtnClick, false);
+		sizeNoticeDIV.appendChild(viewBtnSpan);
 	};
 
 	sizeNoticeDIV.style.setProperty("left", left + "px", "important");
@@ -367,24 +377,20 @@ function sizeNoticeMouseOut()
 
 function fillBtnClick()
 {
-	if(curImg.getUserData("adequateH") != null && curImg.getUserData("adequateW") != null) { // Scale down
-		curImg.height = curImg.getUserData("adequateH");
-		curImg.width = curImg.getUserData("adequateW");
-	} else { // Scale up according to the Height/Width comparing to the adequate size
-		if((curImg.height / curImg.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
-			curImg.height = ADEQUATE_IMG_H;
-			curImg.width  = ADEQUATE_IMG_H * curImg.getUserData("origW") / curImg.getUserData("origH");
-		} else {
-			curImg.width  = ADEQUATE_IMG_W;
-			curImg.height = ADEQUATE_IMG_W * curImg.getUserData("origH") / curImg.getUserData("origW");
-		}
+	// Scale according to the H/W ratio comparing to the adequate size
+	if ((curImg.height / curImg.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
+		curImg.height = ADEQUATE_IMG_H;
+		curImg.width  = ADEQUATE_IMG_H * curImg.getUserData("origW") / curImg.getUserData("origH");
+	} else {
+		curImg.width  = ADEQUATE_IMG_W;
+		curImg.height = ADEQUATE_IMG_W * curImg.getUserData("origH") / curImg.getUserData("origW");
 	}
 	displaySizeBtns(true, getX(curImg), getY(curImg));
 }
 
 function origBtnClick()
 {
-	if(curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
+	if (curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
 		curImg.height = curImg.getUserData("origH");
 		curImg.width = curImg.getUserData("origW");
 
@@ -419,7 +425,6 @@ function zoomOutBtnClick()
 function zoomInBtnClick()
 {
 	// See zoom out code above
-
 	var curH = curImg.height;
 	var curW = curImg.width;
 	curImg.height = curH * userprefs.zoomInStep;
@@ -431,11 +436,11 @@ function zoomInBtnClick()
 function rotateBtnClick()
 {
 	// Rotate 90 degrees clockwise each time
-	if(curImg.style.getPropertyValue("-moz-transform") == "rotate(90deg)") {
+	if (curImg.style.getPropertyValue("-moz-transform") == "rotate(90deg)") {
 		curImg.style.setProperty("-moz-transform", "rotate(180deg)", "important");
-	} else if(curImg.style.getPropertyValue("-moz-transform") == "rotate(180deg)") {
+	} else if (curImg.style.getPropertyValue("-moz-transform") == "rotate(180deg)") {
 		curImg.style.setProperty("-moz-transform", "rotate(270deg)", "important");
-	} else if(curImg.style.getPropertyValue("-moz-transform") == "rotate(270deg)") {
+	} else if (curImg.style.getPropertyValue("-moz-transform") == "rotate(270deg)") {
 		curImg.style.removeProperty("-moz-transform");
 	} else {
 		curImg.style.setProperty("-moz-transform", "rotate(90deg)", "important");
@@ -444,27 +449,34 @@ function rotateBtnClick()
 	displaySizeBtns(true, getX(curImg), getY(curImg));
 }
 
+function viewBtnClick()
+{
+	GM_openInTab(curImg.src);
+}
+
 function debugMsg(html)
 {
-	if(!debugDIV) {
-		debugDIV = document.createElement("div");
-		debugDIV.className = "debugDIV";
-		document.body.appendChild(debugDIV);
-	};
-	debugDIV.innerHTML = html;
-	debugDIV.style.setProperty("display", "inline", "important");
+	if (DEBUG) {
+		if (!debugDIV) {
+			debugDIV = document.createElement("div");
+			debugDIV.className = "debugDIV";
+			document.body.appendChild(debugDIV);
+		};
+		debugDIV.innerHTML = html;
+		debugDIV.style.setProperty("display", "inline", "important");
 
-	if(typeof debugTimeoutID == "number") {
-		window.clearTimeout(debugTimeoutID);
+		if (typeof debugTimeoutID == "number") {
+			window.clearTimeout(debugTimeoutID);
+		}
+		debugTimeoutID = window.setTimeout(function() {
+			debugDIV.style.setProperty("display", "none", "important");
+		}, 5000);
 	}
-	debugTimeoutID = window.setTimeout(function() {
-		debugDIV.style.setProperty("display", "none", "important");
-	}, 5000);
 }
 
 function alertMsg(html)
 {
-	if(!alertDIV) {
+	if (!alertDIV) {
 		alertDIV = document.createElement("div");
 		alertDIV.className = "alertDIV";
 		document.body.appendChild(alertDIV);
@@ -472,7 +484,7 @@ function alertMsg(html)
 	alertDIV.innerHTML = html;
 	alertDIV.style.setProperty("display", "inline", "important");
 
-	if(typeof alertTimeoutID == "number") {
+	if (typeof alertTimeoutID == "number") {
 		window.clearTimeout(alertTimeoutID);
 	}
 	alertTimeoutID = window.setTimeout(function() {
