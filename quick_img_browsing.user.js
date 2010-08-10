@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		1.1.1
+// @version		1.1.2
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
