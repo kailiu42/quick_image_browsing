@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		1.1.2
+// @version		1.1.3
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -150,7 +150,7 @@ document.addEventListener("keypress", function(event) {
 
 			// Ignore small images. Find the first image that top edege is under current viewport top edge
 			if ((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
-				getY(img) > (document.documentElement.scrollTop + userprefs.margin)) {
+				getY(img) > (window.scrollY + userprefs.margin)) {
 
 				lastImg = curImg;
 				cleanUpImg(lastImg);
@@ -162,8 +162,6 @@ document.addEventListener("keypress", function(event) {
 				processImg(curImg);
 
 				debugMsg("Image: " + imgIdx + " / " + imgList.length +
-						"<br/>.X/.Y: " + curImg.x + " / " + curImg.y +
-						"<br/>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
 						"<br/>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
 						"<br/>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
 						"<br/>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
@@ -185,7 +183,7 @@ document.addEventListener("keypress", function(event) {
 
 			// Ignore small images. In reserved order, find the first image that top edege is just beyond current viewport top edge
 			if ((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
-				getY(img) < (document.documentElement.scrollTop + userprefs.margin)) {
+				getY(img) < (window.scrollY + userprefs.margin)) {
 				// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 				lastImg = curImg;
 				cleanUpImg(lastImg);
@@ -197,8 +195,6 @@ document.addEventListener("keypress", function(event) {
 				processImg(curImg);
 
 				debugMsg("Image: " + imgIdx + " / " + imgList.length +
-						"<br/>.X/.Y: " + curImg.x + " / " + curImg.y +
-						"<br/>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
 						"<br/>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
 						"<br/>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
 						"<br/>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
