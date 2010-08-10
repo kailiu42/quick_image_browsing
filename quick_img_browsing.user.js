@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		1.2
+// @version		1.2.1
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -24,6 +24,7 @@ var userprefs = {
 	keyZoomIn : 105, // i
 	keyRotate : 114, // r
 	keyViewInNewTab : 118, // v
+	keySave : 115, // s
 
 	// When scroll to next image, the margin between image top edge to window top edge
 	margin : 25,
@@ -42,6 +43,13 @@ var userprefs = {
 	resizedBorderColor : "#FF6666",
 	// The border width
 	borderWidth : 5,
+
+	// Bring the current viewing image to the most front z-index so when zooming it will keep visible
+	// Alert: it will interfere with some other scirpts/extensions as they may also display a floating icon/message on the image,
+	// Alert: which may be covered by the image with higher z-index
+	bringToFront : true,
+	// z-index to set when bring to front
+	zIdx: 100,
 };
 
 // Max image size. Image with larger size(either larger height or width) will be resized
@@ -51,7 +59,7 @@ var MAX_IMG_H, MAX_IMG_W;
 var ADEQUATE_IMG_H, ADEQUATE_IMG_W;
 
 // For display alert / debug messages
-var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan;
+var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan, saveBtnSpan;
 var alertDIV, debugDIV;
 var alertTimeoutID, debugTimeoutID;
 
@@ -224,6 +232,8 @@ document.addEventListener("keypress", function(event) {
 		rotateBtnClick();
 	} else if (event.charCode == userprefs.keyViewInNewTab) { // Open image in a new tab
 		viewBtnClick();
+	} else if (event.charCode == userprefs.keySave) { // Save image
+		saveBtnClick();
 	}
 }, true);
 
@@ -275,8 +285,10 @@ function processImg(img)
 	img.setAttribute("tabIndex", 0);
 
 	// Bring the image to front
-	img.style.setProperty("position", "relative", "important");
-	img.style.setProperty("z-index", "2147483646", "important");
+	if (userprefs.bringToFront) {
+		img.style.setProperty("position", "relative", "important");
+		img.style.setProperty("z-index", userprefs.zIdx, "important");
+	}
 
 	// Add event listener for mouse over and out event
 	img.addEventListener("mouseover", sizeNoticeMouseOver, false);
@@ -315,6 +327,7 @@ function displaySizeNotice(display, left, top)
 		zoomInBtnSpan	= createBtn("Z <u>I</u>n", zoomInBtnClick); // Zoom n by zoomInStep
 		rotateBtnSpan	= createBtn("<u>R</u>otate", rotateBtnClick); // Rotate 90 degrees clockwise
 		viewBtnSpan		= createBtn("<u>V</u>iew", viewBtnClick); // View image in a new tab
+		// saveBtnSpan		= createBtn("<u>S</u>ave", saveBtnClick); // Save image as
 	};
 
 	sizeNoticeDIV.style.setProperty("left", left + "px", "important");
@@ -422,6 +435,11 @@ function rotateBtnClick()
 function viewBtnClick()
 {
 	GM_openInTab(curImg.src);
+}
+
+function saveBtnClick()
+{
+	// TODO: save image function
 }
 
 function debugMsg(html)
