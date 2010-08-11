@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		1.2.1
+// @version		1.3
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -52,11 +52,8 @@ var userprefs = {
 	zIdx: 100,
 };
 
-// Max image size. Image with larger size(either larger height or width) will be resized
-var MAX_IMG_H, MAX_IMG_W;
-
-// When the size of a image is lager than the max size above, reduce it to below size
-var ADEQUATE_IMG_H, ADEQUATE_IMG_W;
+// Max image size. Image with larger size(either larger height or width) will be reduced
+var maxH, maxW;
 
 // For display alert / debug messages
 var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan, saveBtnSpan;
@@ -133,10 +130,6 @@ function init()
 	}
 }
 
-// When the window loaded or resized, calculate the max and adequate size
-window.addEventListener("load", calSize, true);
-window.addEventListener("resize", calSize, true);
-
 document.addEventListener("keypress", function(event) {
 	// If currently key pressed in a input, select or textarea, do nothing
 	var curElement = document.activeElement.tagName.toLowerCase();
@@ -149,7 +142,7 @@ document.addEventListener("keypress", function(event) {
 
 		// Initialize the imgList every time when key pressed so if page changed(like with autopager) we will find the new images.
 		imgList = document.querySelectorAll("img");
-		curImg = document.querySelectorAll("img[tabIndex]")[0];
+		curImg = document.querySelectorAll("img[tabIndex]")[0] ? document.querySelectorAll("img[tabIndex]")[0] : imgList[0];
 	}
 
 	if (event.charCode == userprefs.keyDown) { // Browsing from top to bottom
@@ -169,11 +162,7 @@ document.addEventListener("keypress", function(event) {
 				// Process image size, add border, event listener etc.
 				processImg(curImg);
 
-				debugMsg("Image: " + imgIdx + " / " + imgList.length +
-						"<br/>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-						"<br/>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-						"<br/>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
-						"<br/>Resized(HxW): " + curImg.height + " x " + curImg.width);
+				debugMsg();
 
 				// Scroll to the proper position
 				window.scrollTo(0, getY(curImg) - userprefs.margin);
@@ -182,7 +171,7 @@ document.addEventListener("keypress", function(event) {
 				break;
 			}
 			if (imgIdx == imgList.length - 1) {
-				alertMsg("Already last image!");
+				alertMsg("Last Image Reached");
 			}
 		}
 	} else if (event.charCode == userprefs.keyUP) { // Browsing from buttom to top
@@ -202,11 +191,7 @@ document.addEventListener("keypress", function(event) {
 				// Process image size, add border, event listener etc.
 				processImg(curImg);
 
-				debugMsg("Image: " + imgIdx + " / " + imgList.length +
-						"<br/>Max(HxW): " + MAX_IMG_H + " x " + MAX_IMG_W +
-						"<br/>Adequate(HxW): " + ADEQUATE_IMG_H + " x " + ADEQUATE_IMG_W +
-						"<br/>Original(HxW): " + curImg.getUserData("origH") + " x " + curImg.getUserData("origW") +
-						"<br/>Resized(HxW): " + curImg.height + " x " + curImg.width);
+				debugMsg();
 
 				// Scroll to the proper position
 				window.scrollTo(0, getY(curImg) - userprefs.margin);
@@ -215,7 +200,7 @@ document.addEventListener("keypress", function(event) {
 				break;
 			}
 			if (imgIdx == 0) {
-				alertMsg("Already first image!");
+				alertMsg("First image Reached");
 			}
 		}
 	} else if (event.charCode == userprefs.keyFill) { // Set the size of current image to adequate size
@@ -237,48 +222,42 @@ document.addEventListener("keypress", function(event) {
 	}
 }, true);
 
-function calSize()
+function calMaxSize(img)
 {
-	// Max image size. Image with larger size(either larger height or width) will be resized
-	MAX_IMG_H = self.innerHeight - 2 * userprefs.margin; // If the image is in a frame, "self" get the size of the frame. If use window.innerHeight will get size of top level window
-	MAX_IMG_W = self.innerWidth - 2 * userprefs.margin;
+	// Image with larger size(either larger height or width) will be reduced
+	// If the image is in a frame, "self" get the size of the frame. If use window.innerHeight will get size of top level window
 
-	// When the size of a image is lager than the max size above, reduce it to below size
-	ADEQUATE_IMG_H = MAX_IMG_H - 10;
-	ADEQUATE_IMG_W = MAX_IMG_W - 10;
+	// Since the image is always positioned "margin" pixels lower than the top edge, maxH is just window(frame) height minus margin
+	maxH = self.innerHeight - 2 * userprefs.margin;
+	// maxW is a bit complexer, as image is not horizontally positioned "margin" pixels right to the left edge, may from center of a page
+	// innerWidth include the scrollbar width so it is actually a bit larger than the page area
+	maxW = window.scrollX + self.innerWidth - getX(img) - 2 * userprefs.margin;
 }
 
-// Get the distance between left edge of the page to left edge of the object
-function getX(obj)
+function resizeImg(img)
 {
-	return obj.offsetLeft + (obj.offsetParent ? getX(obj.offsetParent) : obj.x ? obj.x : 0);
+		// Scale according to the H/W ratio comparing to the max size ratio
+		if ((img.height / img.width) > (maxH / maxW)) {
+			img.height = maxH;
+			img.width  = maxH * img.getUserData("origW") / img.getUserData("origH");
+		} else {
+			img.width  = maxW;
+			img.height = maxW * img.getUserData("origH") / img.getUserData("origW");
+		}
+
+		img.classList.add("resized");
 }
 
-// Get the distance between top edge of the page to top edge of the object
-function getY(obj)
-{
-	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
-}
-
-// Reduce image size
 function processImg(img)
 {
 	// Save the oringal H & W first for resize back by the resize buttons
 	if (img.getUserData("origH") == null) { img.setUserData("origH", img.height, null); }
 	if (img.getUserData("origW") == null) { img.setUserData("origW", img.width, null); }
 
+	calMaxSize(img);
 	// Reduce size if image is bigger than the view area
-	if (img.height > MAX_IMG_H || img.width > MAX_IMG_W) {
-		// Scale down according to the Height/Width comparing to the adequate size
-		if ((img.height / img.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
-			img.height = ADEQUATE_IMG_H;
-			img.width  = ADEQUATE_IMG_H * img.getUserData("origW") / img.getUserData("origH");
-		} else {
-			img.width  = ADEQUATE_IMG_W;
-			img.height = ADEQUATE_IMG_W * img.getUserData("origH") / img.getUserData("origW");
-		}
-
-		img.classList.add("resized");
+	if (img.height > maxH || img.width > maxW) {
+		resizeImg(img);
 	}
 
 	// Set tabIndex=0 always for current viewing image
@@ -360,15 +339,10 @@ function createBtn(html, func)
 
 function fillBtnClick()
 {
-	// Scale according to the H/W ratio comparing to the adequate size
-	if ((curImg.height / curImg.width) > (ADEQUATE_IMG_H / ADEQUATE_IMG_W)) {
-		curImg.height = ADEQUATE_IMG_H;
-		curImg.width  = ADEQUATE_IMG_H * curImg.getUserData("origW") / curImg.getUserData("origH");
-	} else {
-		curImg.width  = ADEQUATE_IMG_W;
-		curImg.height = ADEQUATE_IMG_W * curImg.getUserData("origH") / curImg.getUserData("origW");
-	}
+	calMaxSize(curImg);
+	resizeImg(curImg)
 	displaySizeNotice(true, getX(curImg), getY(curImg));
+	debugMsg();
 }
 
 function origBtnClick()
@@ -378,6 +352,7 @@ function origBtnClick()
 		curImg.width = curImg.getUserData("origW");
 
 		displaySizeNotice(true, getX(curImg), getY(curImg));
+		debugMsg();
 	}
 }
 
@@ -387,6 +362,7 @@ function naturalBtnClick()
 	curImg.width = curImg.naturalWidth;
 
 	displaySizeNotice(true, getX(curImg), getY(curImg));
+	debugMsg();
 }
 
 function zoomOutBtnClick()
@@ -403,6 +379,7 @@ function zoomOutBtnClick()
 	curImg.width  = curW * userprefs.zoomOutStep;
 
 	displaySizeNotice(true, getX(curImg), getY(curImg));
+	debugMsg();
 }
 
 function zoomInBtnClick()
@@ -414,6 +391,7 @@ function zoomInBtnClick()
 	curImg.width  = curW * userprefs.zoomInStep;
 
 	displaySizeNotice(true, getX(curImg), getY(curImg));
+	debugMsg();
 }
 
 function rotateBtnClick()
@@ -430,6 +408,7 @@ function rotateBtnClick()
 	}
 
 	displaySizeNotice(true, getX(curImg), getY(curImg));
+	debugMsg();
 }
 
 function viewBtnClick()
@@ -450,15 +429,18 @@ function debugMsg(html)
 			debugDIV.className = "debugDIV";
 			document.body.appendChild(debugDIV);
 		};
-		debugDIV.innerHTML = html;
+		debugDIV.innerHTML = "Image: " + imgIdx + " / " + imgList.length +
+			"<br/>Current(H/W): " + curImg.height + " / " + curImg.width + " (" + (curImg.height / curImg.width).toFixed(3) + ")" +
+			"<br/>Original(H/W): " + curImg.getUserData("origH") + " / " + curImg.getUserData("origW")  + " (" + (curImg.getUserData("origH") / curImg.getUserData("origW")).toFixed(3) + ")" +
+			"<br/>Max(H/W): " + maxH + " / " + maxW + " (" + (maxH / maxW).toFixed(3) + ")";
 		debugDIV.style.setProperty("display", "inline", "important");
 
-		if (typeof debugTimeoutID == "number") {
+		/*if (typeof debugTimeoutID == "number") {
 			window.clearTimeout(debugTimeoutID);
 		}
 		debugTimeoutID = window.setTimeout(function() {
 			debugDIV.style.setProperty("display", "none", "important");
-		}, 5000);
+		}, 5000);*/
 	}
 }
 
@@ -478,6 +460,18 @@ function alertMsg(html)
 	alertTimeoutID = window.setTimeout(function() {
 		alertDIV.style.setProperty("display", "none", "important");
 	}, 2000);
+}
+
+// Get the distance between left edge of the page to left edge of the object
+function getX(obj)
+{
+	return obj.offsetLeft + (obj.offsetParent ? getX(obj.offsetParent) : obj.x ? obj.x : 0);
+}
+
+// Get the distance between top edge of the page to top edge of the object
+function getY(obj)
+{
+	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
 }
 
 // Thanks Jarett for the Script Update Checker script: // http://userscripts.org/scripts/show/20145
