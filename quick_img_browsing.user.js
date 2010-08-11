@@ -14,6 +14,12 @@ const DEBUG = true;
 
 // User customizable preferences
 var userprefs = {
+	// Two different modes for enumerate all img elements in the page
+	// 0: according to current position of images, keyDown jump to the image that is just below top edge
+	// 1: totally ignore image position, loop always start from first/last image, by index in the list
+	// Mode 1 should work on many more sites than mode 0. While mode 0 always start from the current view port so is more intuitive
+	mode: 1,
+
 	// Shortcut keys
 	keyUP : 107, // k
 	keyDown : 106, // j
@@ -30,8 +36,9 @@ var userprefs = {
 	margin : 25,
 
 	// Minimal image size. Image with smaller size will be skipped when browsing
-	minImgH : 300,
-	minImgW : 300,
+	minH : 300,
+	minW : 300,
+	skipSmallImg : true,
 
 	// For zoom in and out
 	zoomOutStep : 1.25,
@@ -61,6 +68,9 @@ var alertDIV, debugDIV;
 var alertTimeoutID, debugTimeoutID;
 
 var imgList, curImg, lastImg;
+
+// Used in mode 1
+var curIdx = 0;
 
 var initialized = false;
 
@@ -146,61 +156,135 @@ document.addEventListener("keypress", function(event) {
 	}
 
 	if (event.charCode == userprefs.keyDown) { // Browsing from top to bottom
-		for(imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
-			var img = imgList[imgIdx];
+		if (userprefs.mode == 0) {
+			for (imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
+				if (imgIdx == imgList.length - 1) { alertMsg("Last Image Reached");	break; }
 
-			// Ignore small images. Find the first image that top edege is under current viewport top edge
-			if ((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
-				getY(img) > (window.scrollY + userprefs.margin)) {
+				var img = imgList[imgIdx];
 
-				lastImg = curImg;
-				cleanUpImg(lastImg);
+				// Ignore small images or not. Find the first image that top edege is under current viewport top edge
+				if ((userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) &&
+					getY(img) > (window.scrollY + userprefs.margin)) {
 
-				// Mark current viewing image
-				curImg = img;
+					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
+					lastImg = curImg;
+					cleanUpImg(lastImg);
 
-				// Process image size, add border, event listener etc.
-				processImg(curImg);
+					// Mark current viewing image
+					curImg = img;
 
-				debugMsg();
+					// Process image size, add border, event listener etc.
+					processImg(curImg);
 
-				// Scroll to the proper position
-				window.scrollTo(0, getY(curImg) - userprefs.margin);
+					debugMsg();
 
-				// Found the image, exit from the loop, wait for next keypress event
-				break;
+					// Scroll to the proper position
+					window.scrollTo(0, getY(curImg) - userprefs.margin);
+
+					// Found the image, exit from the loop, wait for next keypress event
+					break;
+				}
 			}
-			if (imgIdx == imgList.length - 1) {
-				alertMsg("Last Image Reached");
+		} else if (userprefs.mode == 1) {
+			curIdx++;
+			if (curIdx < 0) {
+				curIdx = 0;
+			} else if (curIdx > imgList.length -1) {
+				curIdx = imgList.length -1;
+			}
+
+			for (imgIdx = curIdx; imgIdx < imgList.length; imgIdx++) {
+				if (imgIdx == imgList.length - 1) { alertMsg("Last Image Reached"); curIdx--; break; }
+
+				var img = imgList[imgIdx];
+
+				// Ignore small images or not
+				if (userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) {
+					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
+					lastImg = curImg;
+					cleanUpImg(lastImg);
+
+					// Mark current viewing image
+					curImg = img;
+					curIdx = imgIdx;
+
+					// Process image size, add border, event listener etc.
+					processImg(curImg);
+
+					debugMsg();
+
+					// Scroll to the proper position
+					window.scrollTo(0, getY(curImg) - userprefs.margin);
+
+					// Found the image, exit from the loop, wait for next keypress event
+					break;
+				}
 			}
 		}
 	} else if (event.charCode == userprefs.keyUP) { // Browsing from buttom to top
-		for(imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
-			var img = imgList[imgIdx];
+		if (userprefs.mode == 0) {
+			for (imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
+				if (imgIdx == 0) { alertMsg("First image Reached"); break; }
 
-			// Ignore small images. In reserved order, find the first image that top edege is just beyond current viewport top edge
-			if ((img.offsetHeight * img.offsetWidth) > (userprefs.minImgH * userprefs.minImgW) &&
-				getY(img) < (window.scrollY + userprefs.margin)) {
-				// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
-				lastImg = curImg;
-				cleanUpImg(lastImg);
+				var img = imgList[imgIdx];
 
-				// Mark current viewing image
-				curImg = img;
+				// Ignore small images or not. In reserved order, find the first image that top edege is just beyond current viewport top edge
+				if ((userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) &&
+					getY(img) < (window.scrollY + userprefs.margin)) {
+					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
+					lastImg = curImg;
+					cleanUpImg(lastImg);
 
-				// Process image size, add border, event listener etc.
-				processImg(curImg);
+					// Mark current viewing image
+					curImg = img;
 
-				debugMsg();
+					// Process image size, add border, event listener etc.
+					processImg(curImg);
 
-				// Scroll to the proper position
-				window.scrollTo(0, getY(curImg) - userprefs.margin);
+					debugMsg();
 
-				// Found the image, exit from the loop, wait for next keypress event
-				break;
+					// Scroll to the proper position
+					window.scrollTo(0, getY(curImg) - userprefs.margin);
+
+					// Found the image, exit from the loop, wait for next keypress event
+					break;
+				}
 			}
-			if (imgIdx == 0) {
-				alertMsg("First image Reached");
+		} else if (userprefs.mode == 1) {
+			curIdx--;
+
+			if (curIdx < 0) {
+				curIdx = 0;
+			} else if (curIdx > imgList.length -1) {
+				curIdx = imgList.length -1;
+			}
+
+			for (imgIdx = curIdx; imgIdx >= 0; imgIdx--) {
+				if (imgIdx == 0) { alertMsg("First Image Reached"); curIdx++; break; }
+
+				var img = imgList[imgIdx];
+
+				// Ignore small images or not
+				if (userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) {
+					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
+					lastImg = curImg;
+					cleanUpImg(lastImg);
+
+					// Mark current viewing image
+					curImg = img;
+					curIdx = imgIdx;
+
+					// Process image size, add border, event listener etc.
+					processImg(curImg);
+
+					debugMsg();
+
+					// Scroll to the proper position
+					window.scrollTo(0, getY(curImg) - userprefs.margin);
+
+					// Found the image, exit from the loop, wait for next keypress event
+					break;
+				}
 			}
 		}
 	} else if (event.charCode == userprefs.keyFill) { // Set the size of current image to adequate size
@@ -294,7 +378,7 @@ function displaySizeNotice(display, left, top)
 		// The float message displayed at the top left corner when mouse is over a image
 		sizeNoticeDIV = document.createElement("div");
 		sizeNoticeDIV.className = "sizeNoticeDIV";
-		document.body.appendChild(sizeNoticeDIV);
+		window.top.document.body.appendChild(sizeNoticeDIV);
 		sizeNoticeDIV.addEventListener("mouseover", sizeNoticeMouseOver, false);
 		sizeNoticeDIV.addEventListener("mouseout", sizeNoticeMouseOut, false);
 
@@ -350,6 +434,8 @@ function origBtnClick()
 	if (curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
 		curImg.height = curImg.getUserData("origH");
 		curImg.width = curImg.getUserData("origW");
+
+		curImg.classList.remove("resized");
 
 		displaySizeNotice(true, getX(curImg), getY(curImg));
 		debugMsg();
@@ -429,7 +515,7 @@ function debugMsg(html)
 			debugDIV.className = "debugDIV";
 			document.body.appendChild(debugDIV);
 		};
-		debugDIV.innerHTML = "Image: " + imgIdx + " / " + imgList.length +
+		debugDIV.innerHTML = "Image Idx: " + imgIdx + " / " + curIdx + " / " + imgList.length +
 			"<br/>Current(H/W): " + curImg.height + " / " + curImg.width + " (" + (curImg.height / curImg.width).toFixed(3) + ")" +
 			"<br/>Original(H/W): " + curImg.getUserData("origH") + " / " + curImg.getUserData("origW")  + " (" + (curImg.getUserData("origH") / curImg.getUserData("origW")).toFixed(3) + ")" +
 			"<br/>Max(H/W): " + maxH + " / " + maxW + " (" + (maxH / maxW).toFixed(3) + ")";
