@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		1.3
+// @version		2.0
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -10,18 +10,18 @@
 // @exclude		http*://mail.google.com/*
 // ==/UserScript==
 
-const DEBUG = true;
+const DEBUG = false;
 
-// User customizable preferences
+// User customizable preferences. These are default values. If different values are set by setCfgValue() then these will be overrided
 var userprefs = {
 	// Two different modes for enumerate all img elements in the page
 	// 0: according to current position of images, keyDown jump to the image that is just below top edge
 	// 1: totally ignore image position, loop always start from first/last image, by index in the list
-	// Mode 1 should work on many more sites than mode 0. While mode 0 always start from the current view port so is more intuitive
-	mode: 1,
+	// Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive
+	mode: 0,
 
 	// Shortcut keys
-	keyUP : 107, // k
+	keyUp : 107, // k
 	keyDown : 106, // j
 	keyFill : 102, // f
 	keyOrig : 111, // o
@@ -31,14 +31,15 @@ var userprefs = {
 	keyRotate : 114, // r
 	keyViewInNewTab : 118, // v
 	keySave : 115, // s
+	keyCfg : 99, // c
 
 	// When scroll to next image, the margin between image top edge to window top edge
-	margin : 25,
+	margin : 30,
 
 	// Minimal image size. Image with smaller size will be skipped when browsing
 	minH : 300,
 	minW : 300,
-	skipSmallImg : true,
+	ignoreSmallImg : true,
 
 	// For zoom in and out
 	zoomOutStep : 1.25,
@@ -63,8 +64,8 @@ var userprefs = {
 var maxH, maxW;
 
 // For display alert / debug messages
-var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan, saveBtnSpan;
-var alertDIV, debugDIV;
+var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan, saveBtnSpan, cfgBtnSpan;
+var alertDIV, debugDIV, cfgBoxDIV;
 var alertTimeoutID, debugTimeoutID;
 
 var imgList, curImg, lastImg;
@@ -78,14 +79,14 @@ function init()
 {
 	if (!initialized) {
 		GM_addStyle(["img[tabIndex='0'] { border-style: solid !important; ",
-											"border-width: ", userprefs.borderWidth, "px", " !important; ", 
-											"border-color: ", userprefs.curBorderColor, " !important; }"].join(""));
+											"border-width: ", getCfgValue("borderWidth"), "px", " !important; ", 
+											"border-color: ", getCfgValue("curBorderColor"), " !important; }"].join(""));
 
-		GM_addStyle(["img[tabIndex=\"0\"].resized { border-style: solid !important; ", 
-													"border-width: ", userprefs.borderWidth, "px", " !important; ",
-													"border-color: ", userprefs.resizedBorderColor, " !important; }"].join(""));
+		GM_addStyle(["img[tabIndex=\"0\"].QIB_resized { border-style: solid !important; ", 
+													"border-width: ", getCfgValue("borderWidth"), "px", " !important; ",
+													"border-color: ", getCfgValue("resizedBorderColor"), " !important; }"].join(""));
 
-		GM_addStyle(["div.sizeNoticeDIV { position: absolute !important; ",
+		GM_addStyle(["div.QIB_sizeNoticeDIV { position: absolute !important; ",
 										"z-index: 2147483647 !important; ",
 										"float: none !important; ",
 										"font-family: Arial, Helvetica !important; ",
@@ -98,9 +99,9 @@ function init()
 										"border: 0 none !important; ",
 										"text-align: left !important; ",
 										"color: #666666 !important;",
-										"background-color: ", userprefs.curBorderColor, " !important; }"].join(""));
+										"background-color: ", getCfgValue("curBorderColor"), " !important; }"].join(""));
 
-		GM_addStyle(["span.sizeBtnSpan { cursor: pointer !important; ",
+		GM_addStyle(["span.QIB_sizeBtnSpan { cursor: pointer !important; ",
 										"height: auto !important; ",
 										"width: auto !important; ",
 										"line-height: 16px !important; ",
@@ -109,7 +110,7 @@ function init()
 										"margin: 2px 1px 2px 2px !important; ",
 										"padding: 1px 3px 1px 2px !important; }"].join(""));
 
-		GM_addStyle(["div.debugDIV { position: fixed !important; ",
+		GM_addStyle(["div.QIB_debugDIV { position: fixed !important; ",
 									"z-index: 2147483647 !important; ",
 									"float: none !important; ",
 									"font-family: Arial, Helvetica !important; ",
@@ -123,7 +124,7 @@ function init()
 									"right: 0 !important; ",
 									"bottom: 0 !important; }"].join(""));
 
-		GM_addStyle(["div.alertDIV { position: fixed !important; ",
+		GM_addStyle(["div.QIB_alertDIV { position: fixed !important; ",
 									"z-index: 2147483647 !important; ",
 									"float: none !important; ",
 									"font-family: Arial, Helvetica !important; ",
@@ -134,7 +135,21 @@ function init()
 									"color: black !important; ",
 									"left: 0 !important; ",
 									"bottom: 0 !important;",
-									"background-color: ", userprefs.curBorderColor, " !important; }"].join(""));
+									"background-color: ", getCfgValue("curBorderColor"), " !important; }"].join(""));
+
+		GM_addStyle(["div.QIB_cfgBoxDIV { position: fixed !important; ",
+									"z-index: 2147483647 !important; ",
+									"float: none !important; ",
+									"font-family: Arial, Helvetica !important; ",
+									"font-size: 12px !important; ",
+									"line-height: 18px !important; ",
+									"padding: 8px 5px 3px 5px !important; ",
+									"background-color: #AF9C90 !important; ",
+									"border: none !important; ",
+									"text-align: left !important; ",
+									"left: 0 !important; ",
+									"bottom: 0 !important;",
+									"color: #303030 !important; }"].join(""));
 
 		initialized = true;
 	}
@@ -147,7 +162,7 @@ document.addEventListener("keypress", function(event) {
 		return;
 	}
 
-	if (event.charCode == userprefs.keyDown || event.charCode == userprefs.keyUp) {
+	if (event.charCode == getCfgValue("keyDown") || event.charCode == getCfgValue("keyUp")) {
 		init();
 
 		// Initialize the imgList every time when key pressed so if page changed(like with autopager) we will find the new images.
@@ -155,16 +170,16 @@ document.addEventListener("keypress", function(event) {
 		curImg = document.querySelectorAll("img[tabIndex]")[0] ? document.querySelectorAll("img[tabIndex]")[0] : imgList[0];
 	}
 
-	if (event.charCode == userprefs.keyDown) { // Browsing from top to bottom
-		if (userprefs.mode == 0) {
+	if (event.charCode == getCfgValue("keyDown")) { // Browsing from top to bottom
+		if (getCfgValue("mode") == 0) {
 			for (imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
 				if (imgIdx == imgList.length - 1) { alertMsg("Last Image Reached");	break; }
 
 				var img = imgList[imgIdx];
 
 				// Ignore small images or not. Find the first image that top edege is under current viewport top edge
-				if ((userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) &&
-					getY(img) > (window.scrollY + userprefs.margin)) {
+				if ((getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) &&
+					getY(img) > (window.scrollY + getCfgValue("margin"))) {
 
 					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 					lastImg = curImg;
@@ -179,13 +194,13 @@ document.addEventListener("keypress", function(event) {
 					debugMsg();
 
 					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - userprefs.margin);
+					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
 
 					// Found the image, exit from the loop, wait for next keypress event
 					break;
 				}
 			}
-		} else if (userprefs.mode == 1) {
+		} else if (getCfgValue("mode") == 1) {
 			curIdx++;
 			if (curIdx < 0) {
 				curIdx = 0;
@@ -199,7 +214,7 @@ document.addEventListener("keypress", function(event) {
 				var img = imgList[imgIdx];
 
 				// Ignore small images or not
-				if (userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) {
+				if (getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) {
 					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 					lastImg = curImg;
 					cleanUpImg(lastImg);
@@ -214,23 +229,23 @@ document.addEventListener("keypress", function(event) {
 					debugMsg();
 
 					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - userprefs.margin);
+					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
 
 					// Found the image, exit from the loop, wait for next keypress event
 					break;
 				}
 			}
 		}
-	} else if (event.charCode == userprefs.keyUP) { // Browsing from buttom to top
-		if (userprefs.mode == 0) {
+	} else if (event.charCode == getCfgValue("keyUp")) { // Browsing from buttom to top
+		if (getCfgValue("mode") == 0) {
 			for (imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
 				if (imgIdx == 0) { alertMsg("First image Reached"); break; }
 
 				var img = imgList[imgIdx];
 
 				// Ignore small images or not. In reserved order, find the first image that top edege is just beyond current viewport top edge
-				if ((userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) &&
-					getY(img) < (window.scrollY + userprefs.margin)) {
+				if ((getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) &&
+					getY(img) < (window.scrollY + getCfgValue("margin"))) {
 					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 					lastImg = curImg;
 					cleanUpImg(lastImg);
@@ -244,13 +259,13 @@ document.addEventListener("keypress", function(event) {
 					debugMsg();
 
 					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - userprefs.margin);
+					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
 
 					// Found the image, exit from the loop, wait for next keypress event
 					break;
 				}
 			}
-		} else if (userprefs.mode == 1) {
+		} else if (getCfgValue("mode") == 1) {
 			curIdx--;
 
 			if (curIdx < 0) {
@@ -265,7 +280,7 @@ document.addEventListener("keypress", function(event) {
 				var img = imgList[imgIdx];
 
 				// Ignore small images or not
-				if (userprefs.skipSmallImg ? ((img.offsetHeight * img.offsetWidth) > (userprefs.minH * userprefs.minW)) : true) {
+				if (getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) {
 					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
 					lastImg = curImg;
 					cleanUpImg(lastImg);
@@ -280,29 +295,31 @@ document.addEventListener("keypress", function(event) {
 					debugMsg();
 
 					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - userprefs.margin);
+					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
 
 					// Found the image, exit from the loop, wait for next keypress event
 					break;
 				}
 			}
 		}
-	} else if (event.charCode == userprefs.keyFill) { // Set the size of current image to adequate size
+	} else if (event.charCode == getCfgValue("keyFill")) { // Set the size of current image to adequate size
 		fillBtnClick();
-	} else if (event.charCode == userprefs.keyOrig) { // Set the size of current image to original size
+	} else if (event.charCode == getCfgValue("keyOrig")) { // Set the size of current image to original size
 		origBtnClick();
-	} else if (event.charCode == userprefs.keyNatural) { // Set the size of current image to natural size
+	} else if (event.charCode == getCfgValue("keyNatural")) { // Set the size of current image to natural size
 		naturalBtnClick();
-	} else if (event.charCode == userprefs.keyZoomOut) { // Zoom out current image
+	} else if (event.charCode == getCfgValue("keyZoomOut")) { // Zoom out current image
 		zoomOutBtnClick();
-	} else if (event.charCode == userprefs.keyZoomIn) { // Zoom in current image
+	} else if (event.charCode == getCfgValue("keyZoomIn")) { // Zoom in current image
 		zoomInBtnClick();
-	} else if (event.charCode == userprefs.keyRotate) { // Rotate current image
+	} else if (event.charCode == getCfgValue("keyRotate")) { // Rotate current image
 		rotateBtnClick();
-	} else if (event.charCode == userprefs.keyViewInNewTab) { // Open image in a new tab
+	} else if (event.charCode == getCfgValue("keyViewInNewTab")) { // Open image in a new tab
 		viewBtnClick();
-	} else if (event.charCode == userprefs.keySave) { // Save image
+	} else if (event.charCode == getCfgValue("keySave")) { // Save image
 		saveBtnClick();
+	} else if (event.charCode == getCfgValue("keyCfg")) { // Save image
+		cfgBtnClick();
 	}
 }, true);
 
@@ -312,10 +329,10 @@ function calMaxSize(img)
 	// If the image is in a frame, "self" get the size of the frame. If use window.innerHeight will get size of top level window
 
 	// Since the image is always positioned "margin" pixels lower than the top edge, maxH is just window(frame) height minus margin
-	maxH = self.innerHeight - 2 * userprefs.margin;
+	maxH = self.innerHeight - getCfgValue("margin") - 15;
 	// maxW is a bit complexer, as image is not horizontally positioned "margin" pixels right to the left edge, may from center of a page
 	// innerWidth include the scrollbar width so it is actually a bit larger than the page area
-	maxW = window.scrollX + self.innerWidth - getX(img) - 2 * userprefs.margin;
+	maxW = window.scrollX + self.innerWidth - getX(img) - getCfgValue("margin") - 15;
 }
 
 function resizeImg(img)
@@ -329,7 +346,7 @@ function resizeImg(img)
 			img.height = maxW * img.getUserData("origH") / img.getUserData("origW");
 		}
 
-		img.classList.add("resized");
+		img.classList.add("QIB_resized");
 }
 
 function processImg(img)
@@ -348,9 +365,9 @@ function processImg(img)
 	img.setAttribute("tabIndex", 0);
 
 	// Bring the image to front
-	if (userprefs.bringToFront) {
+	if (getCfgValue("bringToFront")) {
 		img.style.setProperty("position", "relative", "important");
-		img.style.setProperty("z-index", userprefs.zIdx, "important");
+		img.style.setProperty("z-index", getCfgValue("zIdx"), "important");
 	}
 
 	// Add event listener for mouse over and out event
@@ -377,7 +394,7 @@ function displaySizeNotice(display, left, top)
 	if (!sizeNoticeDIV) {
 		// The float message displayed at the top left corner when mouse is over a image
 		sizeNoticeDIV = document.createElement("div");
-		sizeNoticeDIV.className = "sizeNoticeDIV";
+		sizeNoticeDIV.className = "QIB_sizeNoticeDIV";
 		window.top.document.body.appendChild(sizeNoticeDIV);
 		sizeNoticeDIV.addEventListener("mouseover", sizeNoticeMouseOver, false);
 		sizeNoticeDIV.addEventListener("mouseout", sizeNoticeMouseOut, false);
@@ -390,7 +407,8 @@ function displaySizeNotice(display, left, top)
 		zoomInBtnSpan	= createBtn("Z <u>I</u>n", zoomInBtnClick); // Zoom n by zoomInStep
 		rotateBtnSpan	= createBtn("<u>R</u>otate", rotateBtnClick); // Rotate 90 degrees clockwise
 		viewBtnSpan		= createBtn("<u>V</u>iew", viewBtnClick); // View image in a new tab
-		// saveBtnSpan		= createBtn("<u>S</u>ave", saveBtnClick); // Save image as
+		//saveBtnSpan		= createBtn("<u>S</u>ave", saveBtnClick); // Save image as
+		cfgBtnSpan		= createBtn("<u>C</u>fg", cfgBtnClick); // Config options
 	};
 
 	sizeNoticeDIV.style.setProperty("left", left + "px", "important");
@@ -413,7 +431,7 @@ function createBtn(html, func)
 	// html: button label
 	// func: the function to call when clicked
 	var btn = document.createElement("span");
-	btn.className = "sizeBtnSpan";
+	btn.className = "QIB_sizeBtnSpan";
 	btn.innerHTML = html;
 	btn.addEventListener("click", func, false);
 	sizeNoticeDIV.appendChild(btn);
@@ -435,7 +453,7 @@ function origBtnClick()
 		curImg.height = curImg.getUserData("origH");
 		curImg.width = curImg.getUserData("origW");
 
-		curImg.classList.remove("resized");
+		curImg.classList.remove("QIB_resized");
 
 		displaySizeNotice(true, getX(curImg), getY(curImg));
 		debugMsg();
@@ -455,14 +473,14 @@ function zoomOutBtnClick()
 {
 	// Some site use javascript to ensure proportional scaling of the image. So need to save the current H/W first before change any of them
 	// If the code is like this:
-	// curImg.height *= userprefs.zoomOutStep;
-	// curImg.width  *= userprefs.zoomOutStep;
+	// curImg.height *= getCfgValue("zoomOutStep");
+	// curImg.width  *= getCfgValue("zoomOutStep");
 	// Then when height is changed first the width actually is increased accordingly, and then get increased again, thus give a non-proportional scaled image
 
 	var curH = curImg.height;
 	var curW = curImg.width;
-	curImg.height = curH * userprefs.zoomOutStep;
-	curImg.width  = curW * userprefs.zoomOutStep;
+	curImg.height = curH * getCfgValue("zoomOutStep");
+	curImg.width  = curW * getCfgValue("zoomOutStep");
 
 	displaySizeNotice(true, getX(curImg), getY(curImg));
 	debugMsg();
@@ -473,8 +491,8 @@ function zoomInBtnClick()
 	// See zoom out code above
 	var curH = curImg.height;
 	var curW = curImg.width;
-	curImg.height = curH * userprefs.zoomInStep;
-	curImg.width  = curW * userprefs.zoomInStep;
+	curImg.height = curH * getCfgValue("zoomInStep");
+	curImg.width  = curW * getCfgValue("zoomInStep");
 
 	displaySizeNotice(true, getX(curImg), getY(curImg));
 	debugMsg();
@@ -507,12 +525,17 @@ function saveBtnClick()
 	// TODO: save image function
 }
 
+function cfgBtnClick()
+{
+	displayCfgBox(true);
+}
+
 function debugMsg(html)
 {
 	if (DEBUG) {
 		if (!debugDIV) {
 			debugDIV = document.createElement("div");
-			debugDIV.className = "debugDIV";
+			debugDIV.className = "QIB_debugDIV";
 			document.body.appendChild(debugDIV);
 		};
 		debugDIV.innerHTML = "Image Idx: " + imgIdx + " / " + curIdx + " / " + imgList.length +
@@ -534,7 +557,7 @@ function alertMsg(html)
 {
 	if (!alertDIV) {
 		alertDIV = document.createElement("div");
-		alertDIV.className = "alertDIV";
+		alertDIV.className = "QIB_alertDIV";
 		document.body.appendChild(alertDIV);
 	};
 	alertDIV.innerHTML = html;
@@ -548,6 +571,86 @@ function alertMsg(html)
 	}, 2000);
 }
 
+function displayCfgBox(display)
+{
+	if (!cfgBoxDIV) {
+		cfgBoxDIV = document.createElement("div");
+		cfgBoxDIV.className = "QIB_cfgBoxDIV";
+		document.body.appendChild(cfgBoxDIV);
+
+	};
+
+	cfgBoxDIV.style.setProperty("display", (display ? "block" : "none"), "important");
+
+	cfgBoxDIV.innerHTML = [
+		"<div>",
+			"<div>",
+				"Mode: ",
+				"<select id='QIB_mode' title='Choose different mode for enumerate and loop image. Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive'>",
+				(getCfgValue("mode") == 1 ? 
+					"<option value='0' style='padding-left:2px;important'>0 - From current position</option>" + 
+					"<option value='1' style='padding-left:2px;important' selected>1 - From first image</option>"
+				:
+					"<option value='0' style='padding-left:2px;important' selected>0 - From current position</option>" + 
+					"<option value='1' style='padding-left:2px;important'>1 - From first image</option>"
+				),
+				"</select>",
+			"</div>",
+			"<div style='margin-top: 3px !important;'>",
+				"Top margin: <input type='text' id='QIB_margin' maxlength='4' size='3' title='Top margin when jump to a image' value='", getCfgValue("margin"), "'/>",
+			"</div>",
+			"<div style='margin-top: 3px !important;'>",
+				"<input type='checkbox' id='QIB_ignore_small' title='Check to ignore small images when navigating' ", (getCfgValue("ignoreSmallImg") ? "checked" : ""), "/>&nbsp;",
+				"<label for='QIB_ignore_small'>Ignore images smaller than</label><br/>",
+				"Height: <input type='text' id='QIB_min_h' maxlength='4' size='3' title='Height to ignore' value='", getCfgValue("minH"), "'/>",
+				" Width: <input type='text' id='QIB_min_w' maxlength='4' size='3' title='Width to ignore'  value='", getCfgValue("minW"), "'/>",
+			"</div>",
+			"<div style='margin-top: 3px !important;'>",
+				"<input type='button' id='QIB_save_config' value='Save' title='Save the configuration'/>&nbsp;&nbsp;",
+				"<input type='button' id='QIB_reset_config' value='Reset' title='Reset these options to default'/>&nbsp;&nbsp;",
+				"<input type='button' id='QIB_cancel_config' value='Cancel' title='Cancel and don't save configuration'/>",
+			"</div>",
+		"</div>"].join("");
+
+	document.getElementById("QIB_save_config").addEventListener("click", saveCfg, false);
+	document.getElementById("QIB_reset_config").addEventListener("click", resetCfg, false);
+	document.getElementById("QIB_cancel_config").addEventListener("click", cancelCfg, false);
+
+	/*if (typeof debugTimeoutID == "number") {
+		window.clearTimeout(debugTimeoutID);
+	}
+	debugTimeoutID = window.setTimeout(function() {
+		cfgBoxDIV.style.setProperty("display", "none", "important");
+	}, 5000);*/
+}
+
+function saveCfg()
+{
+	setCfgValue("mode", document.getElementById("QIB_mode").value - 0); // Trick to convert string to number
+	setCfgValue("margin", document.getElementById("QIB_margin").value - 0);
+	setCfgValue("ignoreSmallImg", Boolean(document.getElementById("QIB_ignore_small").checked));
+	setCfgValue("minH", document.getElementById("QIB_min_h").value - 0);
+	setCfgValue("minW", document.getElementById("QIB_min_w").value - 0);
+
+	displayCfgBox(false);
+}
+
+function resetCfg()
+{
+	GM_deleteValue("mode");
+	GM_deleteValue("margin");
+	GM_deleteValue("ignoreSmallImg");
+	GM_deleteValue("minH");
+	GM_deleteValue("minW");
+
+	displayCfgBox(false);
+}
+
+function cancelCfg()
+{
+	displayCfgBox(false);
+}
+
 // Get the distance between left edge of the page to left edge of the object
 function getX(obj)
 {
@@ -559,6 +662,22 @@ function getY(obj)
 {
 	return (obj.offsetParent ? obj.offsetTop + getY(obj.offsetParent) : obj.y ? obj.y : 0);
 }
+
+function getCfgValue(key)
+{
+	// If there is customized value, return it. If there is not, return the predefined default value from userprefs
+	//var value = window.localStorage ? window.localStorage.getItem(name) : getCookie(name);
+	//return (value ? decodeURIComponent(value) : '');
+	return GM_getValue(key, userprefs[key]);
+}
+
+function setCfgValue(key, value)
+{
+	//value = encodeURIComponent(value);
+	//window.localStorage ? window.localStorage.setItem(setName, value) : setCookie(setName, value, 365, '/', location.hostname);
+	GM_setValue(key, value);
+}
+
 
 // Thanks Jarett for the Script Update Checker script: // http://userscripts.org/scripts/show/20145
 var SUC_script_num = 83311; // Change this to the number given to the script by userscripts.org (check the address bar)
