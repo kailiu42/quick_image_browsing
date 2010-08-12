@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.0
+// @version		2.1
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -10,7 +10,7 @@
 // @exclude		http*://mail.google.com/*
 // ==/UserScript==
 
-const DEBUG = false;
+const DEBUG = true;
 
 // User customizable preferences. These are default values. If different values are set by setCfgValue() then these will be overrided
 var userprefs = {
@@ -71,85 +71,102 @@ var alertTimeoutID, debugTimeoutID;
 var imgList, curImg, lastImg;
 
 // Used in mode 1
-var curIdx = 0;
+var curIdx = null;
 
 var initialized = false;
 
 function init()
 {
 	if (!initialized) {
-		GM_addStyle(["img[tabIndex='0'] { border-style: solid !important; ",
-											"border-width: ", getCfgValue("borderWidth"), "px", " !important; ", 
-											"border-color: ", getCfgValue("curBorderColor"), " !important; }"].join(""));
+		GM_addStyle(["img[tabIndex='0'] { border-style: solid !important;",
+											"border-width: ", getCfgValue("borderWidth"), "px", " !important;", 
+											"border-color: ", getCfgValue("curBorderColor"), " !important;}"].join(""));
 
-		GM_addStyle(["img[tabIndex=\"0\"].QIB_resized { border-style: solid !important; ", 
-													"border-width: ", getCfgValue("borderWidth"), "px", " !important; ",
-													"border-color: ", getCfgValue("resizedBorderColor"), " !important; }"].join(""));
+		GM_addStyle(["img[tabIndex=\"0\"].QIB_resized { border-style: solid !important;", 
+													"border-width: ", getCfgValue("borderWidth"), "px", " !important;",
+													"border-color: ", getCfgValue("resizedBorderColor"), " !important;}"].join(""));
 
-		GM_addStyle(["div.QIB_sizeNoticeDIV { position: absolute !important; ",
-										"z-index: 2147483647 !important; ",
-										"float: none !important; ",
-										"font-family: Arial, Helvetica !important; ",
-										"font-size: 9pt !important; ",
-										"height: auto !important; ",
-										"width: auto !important; ",
-										"line-height: 16px !important; ",
+		GM_addStyle(["div.QIB_sizeNoticeDIV { position: absolute !important;",
+										"z-index: 2147483647 !important;",
+										"float: none !important;",
+										"font-family: Arial, Helvetica !important;",
+										"font-size: 9pt !important;",
+										"height: auto !important;",
+										"width: auto !important;",
+										"line-height: 16px !important;",
 										"padding: 3px 2px 4px 1px!important; ",
-										"margin: 0px !important; ",
-										"border: 0 none !important; ",
-										"text-align: left !important; ",
+										"margin: 0px !important;",
+										"border: 0 none !important;",
+										"text-align: left !important;",
 										"color: #666666 !important;",
-										"background-color: ", getCfgValue("curBorderColor"), " !important; }"].join(""));
+										"background-color: ", getCfgValue("curBorderColor"), " !important;}"].join(""));
 
-		GM_addStyle(["span.QIB_sizeBtnSpan { cursor: pointer !important; ",
-										"height: auto !important; ",
-										"width: auto !important; ",
-										"line-height: 16px !important; ",
-										"background-color: #F1F1F1 !important; ",
-										"border: 0 none !important; ",
-										"margin: 2px 1px 2px 2px !important; ",
-										"padding: 1px 3px 1px 2px !important; }"].join(""));
+		GM_addStyle(["span.QIB_sizeBtnSpan { cursor: pointer !important;",
+										"height: auto !important;",
+										"width: auto !important;",
+										"line-height: 16px !important;",
+										"background-color: #F1F1F1 !important;",
+										"border: 0 none !important;",
+										"margin: 2px 1px 2px 2px !important;",
+										"padding: 1px 3px 1px 2px !important;}"].join(""));
 
-		GM_addStyle(["div.QIB_debugDIV { position: fixed !important; ",
-									"z-index: 2147483647 !important; ",
-									"float: none !important; ",
-									"font-family: Arial, Helvetica !important; ",
-									"font-size: 12px !important; ",
-									"line-height: 16px !important; ",
-									"padding: 2px 5px 2px 5px !important; ",
-									"background-color: #AF9C90 !important; ",
-									"border: none !important; ",
-									"text-align: left !important; ",
-									"color: #303030 !important; ",
-									"right: 0 !important; ",
-									"bottom: 0 !important; }"].join(""));
+		GM_addStyle(["div.QIB_debugDIV { position: fixed !important;",
+									"z-index: 2147483647 !important;",
+									"float: none !important;",
+									"font-family: Arial, Helvetica !important;",
+									"font-size: 12px !important;",
+									"line-height: 16px !important;",
+									"padding: 2px 5px 2px 5px !important;",
+									"background-color: #AF9C90 !important;",
+									"border: none !important;",
+									"text-align: left !important;",
+									"color: #303030 !important;",
+									"right: 0 !important;",
+									"bottom: 0 !important;}"].join(""));
 
-		GM_addStyle(["div.QIB_alertDIV { position: fixed !important; ",
-									"z-index: 2147483647 !important; ",
-									"float: none !important; ",
-									"font-family: Arial, Helvetica !important; ",
-									"font-size: 16px !important; ",
-									"padding: 2px 8px 2px 8px !important; ",
-									"border: none !important; ",
-									"text-align: left !important; ",
-									"color: black !important; ",
-									"left: 0 !important; ",
+		GM_addStyle(["div.QIB_alertDIV { position: fixed !important;",
+									"z-index: 2147483647 !important;",
+									"float: none !important;",
+									"font-family: Arial, Helvetica !important;",
+									"font-size: 16px !important;",
+									"padding: 2px 8px 2px 8px !important;",
+									"border: none !important;",
+									"text-align: left !important;",
+									"color: black !important;",
+									"left: 0 !important;",
 									"bottom: 0 !important;",
-									"background-color: ", getCfgValue("curBorderColor"), " !important; }"].join(""));
+									"background-color: ", getCfgValue("curBorderColor"), " !important;}"].join(""));
 
-		GM_addStyle(["div.QIB_cfgBoxDIV { position: fixed !important; ",
-									"z-index: 2147483647 !important; ",
-									"float: none !important; ",
-									"font-family: Arial, Helvetica !important; ",
-									"font-size: 12px !important; ",
-									"line-height: 18px !important; ",
-									"padding: 8px 5px 3px 5px !important; ",
-									"background-color: #AF9C90 !important; ",
-									"border: none !important; ",
-									"text-align: left !important; ",
-									"left: 0 !important; ",
+		GM_addStyle(["div.QIB_cfgBoxDIV { position: fixed !important;",
+									"height: auto !important;",
+									"width: auto !important;",
+									"z-index: 2147483647 !important;",
+									"float: none !important;",
+									"font-family: Arial, Helvetica !important;",
+									"font-size: 12px !important;",
+									"line-height: 16px !important;",
+									"padding: 3px 5px 0px 5px !important;",
+									"background-color: #AF9C90 !important;",
+									"border: none !important;",
+									"text-align: left !important;",
+									"left: 0 !important;",
 									"bottom: 0 !important;",
-									"color: #303030 !important; }"].join(""));
+									"color: #303030 !important;}"].join(""));
+
+		GM_addStyle(["#QIB_div { padding: 0px !important;",
+									"margin: 2px !important;"].join(""));
+
+		GM_addStyle(["#QIB_div > select, #QIB_div > input, #QIB_div > label {",
+									"display: inline !important;",
+									"font-family: Arial, Helvetica !important;",
+									"font-size: 12px !important;",
+									"color: #303030 !important;",
+									"padding: 0px !important;",
+									"margin: 1px !important;",
+									"vertical-align: bottom !important;}"].join(""));
+
+		GM_addStyle(["#QIB_div > select > option { padding-left: 3px !important;}"].join(""));
+
 
 		initialized = true;
 	}
@@ -171,135 +188,65 @@ document.addEventListener("keypress", function(event) {
 	}
 
 	if (event.charCode == getCfgValue("keyDown")) { // Browsing from top to bottom
-		if (getCfgValue("mode") == 0) {
-			for (imgIdx = 0; imgIdx < imgList.length; imgIdx++) {
-				if (imgIdx == imgList.length - 1) { alertMsg("Last Image Reached");	break; }
-
-				var img = imgList[imgIdx];
-
-				// Ignore small images or not. Find the first image that top edege is under current viewport top edge
-				if ((getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) &&
-					getY(img) > (window.scrollY + getCfgValue("margin"))) {
-
-					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
-					lastImg = curImg;
-					cleanUpImg(lastImg);
-
-					// Mark current viewing image
-					curImg = img;
-
-					// Process image size, add border, event listener etc.
-					processImg(curImg);
-
-					debugMsg();
-
-					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
-
-					// Found the image, exit from the loop, wait for next keypress event
-					break;
-				}
-			}
-		} else if (getCfgValue("mode") == 1) {
-			curIdx++;
-			if (curIdx < 0) {
+		if (getCfgValue("mode") == 1) {
+			if (curIdx == null || curIdx < 0) {
 				curIdx = 0;
-			} else if (curIdx > imgList.length -1) {
+			} else if (curIdx < imgList.length - 1) {
+				curIdx++;
+			} else {
 				curIdx = imgList.length -1;
 			}
+		}
 
-			for (imgIdx = curIdx; imgIdx < imgList.length; imgIdx++) {
-				if (imgIdx == imgList.length - 1) { alertMsg("Last Image Reached"); curIdx--; break; }
+		var idxStart = (getCfgValue("mode") == 1 ? curIdx : 0);
+		for (imgIdx = idxStart; imgIdx < imgList.length; imgIdx++) {
+			var img = imgList[imgIdx];
 
-				var img = imgList[imgIdx];
+			if (imgIdx == imgList.length - 1) {
+				alertMsg("Last Image Reached");
 
-				// Ignore small images or not
-				if (getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) {
-					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
-					lastImg = curImg;
-					cleanUpImg(lastImg);
-
-					// Mark current viewing image
-					curImg = img;
-					curIdx = imgIdx;
-
-					// Process image size, add border, event listener etc.
-					processImg(curImg);
-
-					debugMsg();
-
-					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
-
-					// Found the image, exit from the loop, wait for next keypress event
-					break;
+				if (getCfgValue("mode") == 1) {
+					// When already at the end of the list, move it back to avoid out of index
+					curIdx--;
 				}
+			}
+
+			if (isValidImg(img, true)) {
+				jumpToImg(img, imgIdx);
+
+				// Found the image, exit from the loop, wait for next keypress event
+				break;
 			}
 		}
 	} else if (event.charCode == getCfgValue("keyUp")) { // Browsing from buttom to top
-		if (getCfgValue("mode") == 0) {
-			for (imgIdx = imgList.length - 1; imgIdx >= 0; imgIdx--) {
-				if (imgIdx == 0) { alertMsg("First image Reached"); break; }
-
-				var img = imgList[imgIdx];
-
-				// Ignore small images or not. In reserved order, find the first image that top edege is just beyond current viewport top edge
-				if ((getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) &&
-					getY(img) < (window.scrollY + getCfgValue("margin"))) {
-					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
-					lastImg = curImg;
-					cleanUpImg(lastImg);
-
-					// Mark current viewing image
-					curImg = img;
-
-					// Process image size, add border, event listener etc.
-					processImg(curImg);
-
-					debugMsg();
-
-					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
-
-					// Found the image, exit from the loop, wait for next keypress event
-					break;
-				}
-			}
-		} else if (getCfgValue("mode") == 1) {
-			curIdx--;
-
-			if (curIdx < 0) {
+		if (getCfgValue("mode") == 1) {
+			if (curIdx == null || curIdx > imgList.length - 1) {
+				curIdx = imgList.length - 1;
+			} else if (curIdx > 0) {
+				curIdx--;
+			} else {
 				curIdx = 0;
-			} else if (curIdx > imgList.length -1) {
-				curIdx = imgList.length -1;
+			}
+		}
+
+		var idxStart = (getCfgValue("mode") == 1 ? curIdx : imgList.length - 1);
+		for (imgIdx = idxStart; imgIdx >= 0; imgIdx--) {
+			var img = imgList[imgIdx];
+
+			if (imgIdx == 0) {
+				alertMsg("First image Reached");
+
+				if (getCfgValue("mode") == 1) {
+					// When already at the beginning of the list, move it back to avoid out of index
+					curIdx++;
+				}
 			}
 
-			for (imgIdx = curIdx; imgIdx >= 0; imgIdx--) {
-				if (imgIdx == 0) { alertMsg("First Image Reached"); curIdx++; break; }
+			if (isValidImg(img, false)) {
+				jumpToImg(img, imgIdx);
 
-				var img = imgList[imgIdx];
-
-				// Ignore small images or not
-				if (getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true) {
-					// Remove the tabIndex attribute from former image, always set tabIndex=0 only on current viewing image
-					lastImg = curImg;
-					cleanUpImg(lastImg);
-
-					// Mark current viewing image
-					curImg = img;
-					curIdx = imgIdx;
-
-					// Process image size, add border, event listener etc.
-					processImg(curImg);
-
-					debugMsg();
-
-					// Scroll to the proper position
-					window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
-
-					// Found the image, exit from the loop, wait for next keypress event
-					break;
-				}
+				// Found the image, exit from the loop, wait for next keypress event
+				break;
 			}
 		}
 	} else if (event.charCode == getCfgValue("keyFill")) { // Set the size of current image to adequate size
@@ -322,6 +269,29 @@ document.addEventListener("keypress", function(event) {
 		cfgBtnClick();
 	}
 }, true);
+
+function isValidImg(img, fwd)
+{
+	// img: The image to check
+	// fwd: The direction of the movement. true: forward; false: backward
+	var valid;
+
+	// Check size
+	valid = getCfgValue("ignoreSmallImg") ? ((img.offsetHeight * img.offsetWidth) > (getCfgValue("minH") * getCfgValue("minW"))) : true;
+
+	// Check position
+	if (getCfgValue("mode") == 0) {
+		if (fwd) {
+			// Jump direction is forward(top to bottom), find the first image that top edege is just below current viewport top edge
+			valid = valid && (getY(img) > (window.scrollY + getCfgValue("margin")));
+		} else {
+			// Jump direction is backward(bottom to top), find the first image that top edege is just above current viewport top edge
+			valid = valid && (getY(img) < (window.scrollY + getCfgValue("margin")));
+		}
+	}
+
+	return valid;
+}
 
 function calMaxSize(img)
 {
@@ -378,8 +348,27 @@ function processImg(img)
 	displaySizeNotice(false, getX(img), getY(img));
 }
 
+function jumpToImg(img, imgIdx)
+{
+	// Mark current and last image
+	lastImg = curImg;
+	curImg = img;
+	curIdx = imgIdx;
+
+	cleanUpImg(lastImg);
+
+	// Handle image size, add border, event listener etc.
+	processImg(curImg);
+
+	// Scroll to the proper position
+	window.scrollTo(0, getY(curImg) - getCfgValue("margin"));
+
+	debugMsg();
+}
+
 function cleanUpImg(img)
 {
+	// This function should only take the last img as an argument
 	// Remove the tabIndex attribute, always set tabIndex=0 only on current viewing image
 	try	{
 		img.removeAttribute("tabIndex");
@@ -538,7 +527,7 @@ function debugMsg(html)
 			debugDIV.className = "QIB_debugDIV";
 			document.body.appendChild(debugDIV);
 		};
-		debugDIV.innerHTML = "Image Idx: " + imgIdx + " / " + curIdx + " / " + imgList.length +
+		debugDIV.innerHTML = "Image Idx: " + curIdx + " / " + imgList.length +
 			"<br/>Current(H/W): " + curImg.height + " / " + curImg.width + " (" + (curImg.height / curImg.width).toFixed(3) + ")" +
 			"<br/>Original(H/W): " + curImg.getUserData("origH") + " / " + curImg.getUserData("origW")  + " (" + (curImg.getUserData("origH") / curImg.getUserData("origW")).toFixed(3) + ")" +
 			"<br/>Max(H/W): " + maxH + " / " + maxW + " (" + (maxH / maxW).toFixed(3) + ")";
@@ -583,34 +572,33 @@ function displayCfgBox(display)
 	cfgBoxDIV.style.setProperty("display", (display ? "block" : "none"), "important");
 
 	cfgBoxDIV.innerHTML = [
-		"<div>",
-			"<div>",
-				"Mode: ",
-				"<select id='QIB_mode' title='Choose different mode for enumerate and loop image. Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive'>",
+		"<div id='QIB_div'>",
+			"Mode: ",
+			"<select id='QIB_mode' title='Choose different mode for enumerate and loop image. Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive'>",
 				(getCfgValue("mode") == 1 ? 
-					"<option value='0' style='padding-left:2px;important'>0 - From current position</option>" + 
-					"<option value='1' style='padding-left:2px;important' selected>1 - From first image</option>"
+					"<option value='0'>0 - By img position</option>" + 
+					"<option value='1' selected>1 - By img index</option>"
 				:
-					"<option value='0' style='padding-left:2px;important' selected>0 - From current position</option>" + 
-					"<option value='1' style='padding-left:2px;important'>1 - From first image</option>"
+					"<option value='0' selected>0 - By img position</option>" + 
+					"<option value='1'>1 - By img index</option>"
 				),
-				"</select>",
-			"</div>",
-			"<div style='margin-top: 3px !important;'>",
-				"Top margin: <input type='text' id='QIB_margin' maxlength='4' size='3' title='Top margin when jump to a image' value='", getCfgValue("margin"), "'/>",
-			"</div>",
-			"<div style='margin-top: 3px !important;'>",
-				"<input type='checkbox' id='QIB_ignore_small' title='Check to ignore small images when navigating' ", (getCfgValue("ignoreSmallImg") ? "checked" : ""), "/>&nbsp;",
-				"<label for='QIB_ignore_small'>Ignore images smaller than</label><br/>",
-				"Height: <input type='text' id='QIB_min_h' maxlength='4' size='3' title='Height to ignore' value='", getCfgValue("minH"), "'/>",
-				" Width: <input type='text' id='QIB_min_w' maxlength='4' size='3' title='Width to ignore'  value='", getCfgValue("minW"), "'/>",
-			"</div>",
-			"<div style='margin-top: 3px !important;'>",
-				"<input type='button' id='QIB_save_config' value='Save' title='Save the configuration'/>&nbsp;&nbsp;",
-				"<input type='button' id='QIB_reset_config' value='Reset' title='Reset these options to default'/>&nbsp;&nbsp;",
-				"<input type='button' id='QIB_cancel_config' value='Cancel' title='Cancel and don't save configuration'/>",
-			"</div>",
-		"</div>"].join("");
+			"</select>",
+		"</div>",
+		"<div id='QIB_div'>",
+			"Top margin: <input type='text' id='QIB_margin' maxlength='4' size='3' title='Top margin when jump to a image' value='", getCfgValue("margin"), "'/>",
+		"</div>",
+		"<div id='QIB_div'>",
+			"<input type='checkbox' id='QIB_ignore_small' title='Check to ignore small images when navigating' ", (getCfgValue("ignoreSmallImg") ? "checked" : ""), "/>&nbsp;",
+			"<label for='QIB_ignore_small'>Ignore images smaller than</label><br/>",
+			"Height: <input type='text' id='QIB_min_h' maxlength='4' size='3' title='Height to ignore' value='", getCfgValue("minH"), "'/>",
+			" Width: <input type='text' id='QIB_min_w' maxlength='4' size='3' title='Width to ignore'  value='", getCfgValue("minW"), "'/>",
+		"</div>",
+		"<div id='QIB_div'>",
+			"<input type='button' id='QIB_save_config' value='Save' title='Save the configuration'/>&nbsp;&nbsp;",
+			"<input type='button' id='QIB_reset_config' value='Reset' title='Reset these options to default'/>&nbsp;&nbsp;",
+			"<input type='button' id='QIB_cancel_config' value='Cancel' title='Cancel and don't save configuration'/>",
+		"</div>",
+		].join("");
 
 	document.getElementById("QIB_save_config").addEventListener("click", saveCfg, false);
 	document.getElementById("QIB_reset_config").addEventListener("click", resetCfg, false);
