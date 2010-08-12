@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.1.2
+// @version		2.1.3
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -73,6 +73,8 @@ var imgList, curImg, lastImg;
 var curIdx = null;
 
 var initialized = false;
+
+GM_registerMenuCommand("Quick Img Browsing - Configuration", cfgBtnClick);
 
 function init()
 {
@@ -165,7 +167,6 @@ function init()
 									"vertical-align: bottom !important;}"].join(""));
 
 		GM_addStyle(["#QIB_div > select > option { padding-left: 3px !important;}"].join(""));
-
 
 		initialized = true;
 	}
@@ -428,32 +429,38 @@ function createBtn(html, func)
 
 function fillBtnClick()
 {
-	calMaxSize(curImg);
-	resizeImg(curImg)
-	displaySizeNotice(true, getX(curImg), getY(curImg));
-	debugMsg();
-}
-
-function origBtnClick()
-{
-	if (curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
-		curImg.height = curImg.getUserData("origH");
-		curImg.width = curImg.getUserData("origW");
-
-		curImg.classList.remove("QIB_resized");
-
+	if (curImg) {
+		calMaxSize(curImg);
+		resizeImg(curImg)
 		displaySizeNotice(true, getX(curImg), getY(curImg));
 		debugMsg();
 	}
 }
 
+function origBtnClick()
+{
+	if (curImg) {
+		if (curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
+			curImg.height = curImg.getUserData("origH");
+			curImg.width = curImg.getUserData("origW");
+
+			curImg.classList.remove("QIB_resized");
+
+			displaySizeNotice(true, getX(curImg), getY(curImg));
+			debugMsg();
+		}
+	}
+}
+
 function naturalBtnClick()
 {
-	curImg.height = curImg.naturalHeight;
-	curImg.width = curImg.naturalWidth;
+	if (curImg) {
+		curImg.height = curImg.naturalHeight;
+		curImg.width = curImg.naturalWidth;
 
-	displaySizeNotice(true, getX(curImg), getY(curImg));
-	debugMsg();
+		displaySizeNotice(true, getX(curImg), getY(curImg));
+		debugMsg();
+	}
 }
 
 function zoomOutBtnClick()
@@ -463,48 +470,55 @@ function zoomOutBtnClick()
 	// curImg.height *= getCfgValue("zoomOutStep");
 	// curImg.width  *= getCfgValue("zoomOutStep");
 	// Then when height is changed first the width actually is increased accordingly, and then get increased again, thus give a non-proportional scaled image
+	if (curImg) {
+		var curH = curImg.height;
+		var curW = curImg.width;
+		curImg.height = curH * getCfgValue("zoomOutStep");
+		curImg.width  = curW * getCfgValue("zoomOutStep");
 
-	var curH = curImg.height;
-	var curW = curImg.width;
-	curImg.height = curH * getCfgValue("zoomOutStep");
-	curImg.width  = curW * getCfgValue("zoomOutStep");
-
-	displaySizeNotice(true, getX(curImg), getY(curImg));
-	debugMsg();
+		displaySizeNotice(true, getX(curImg), getY(curImg));
+		debugMsg();
+	}
 }
 
 function zoomInBtnClick()
 {
 	// See zoom out code above
-	var curH = curImg.height;
-	var curW = curImg.width;
-	curImg.height = curH * getCfgValue("zoomInStep");
-	curImg.width  = curW * getCfgValue("zoomInStep");
+	if (curImg) {
+		var curH = curImg.height;
+		var curW = curImg.width;
+		curImg.height = curH * getCfgValue("zoomInStep");
+		curImg.width  = curW * getCfgValue("zoomInStep");
 
-	displaySizeNotice(true, getX(curImg), getY(curImg));
-	debugMsg();
+		displaySizeNotice(true, getX(curImg), getY(curImg));
+		debugMsg();
+	}
 }
 
 function rotateBtnClick()
 {
-	// Rotate 90 degrees clockwise each time
-	if (curImg.style.getPropertyValue("-moz-transform") == "rotate(90deg)") {
-		curImg.style.setProperty("-moz-transform", "rotate(180deg)", "important");
-	} else if (curImg.style.getPropertyValue("-moz-transform") == "rotate(180deg)") {
-		curImg.style.setProperty("-moz-transform", "rotate(270deg)", "important");
-	} else if (curImg.style.getPropertyValue("-moz-transform") == "rotate(270deg)") {
-		curImg.style.removeProperty("-moz-transform");
-	} else {
-		curImg.style.setProperty("-moz-transform", "rotate(90deg)", "important");
-	}
+	if (curImg) {
+		// Rotate 90 degrees clockwise each time
+		if (curImg.style.getPropertyValue("-moz-transform") == "rotate(90deg)") {
+			curImg.style.setProperty("-moz-transform", "rotate(180deg)", "important");
+		} else if (curImg.style.getPropertyValue("-moz-transform") == "rotate(180deg)") {
+			curImg.style.setProperty("-moz-transform", "rotate(270deg)", "important");
+		} else if (curImg.style.getPropertyValue("-moz-transform") == "rotate(270deg)") {
+			curImg.style.removeProperty("-moz-transform");
+		} else {
+			curImg.style.setProperty("-moz-transform", "rotate(90deg)", "important");
+		}
 
-	displaySizeNotice(true, getX(curImg), getY(curImg));
-	debugMsg();
+		displaySizeNotice(true, getX(curImg), getY(curImg));
+		debugMsg();
+	}
 }
 
 function viewBtnClick()
 {
-	GM_openInTab(curImg.src);
+	if (curImg) {
+		GM_openInTab(curImg.src);
+	}
 }
 
 function saveBtnClick()
@@ -514,6 +528,7 @@ function saveBtnClick()
 
 function cfgBtnClick()
 {
+	init();
 	displayCfgBox(true);
 }
 
