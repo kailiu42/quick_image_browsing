@@ -298,7 +298,7 @@ function calMaxSize(img)
 	// If the image is in a frame, "self" get the size of the frame. If use window.innerHeight will get size of top level window
 
 	// Since the image is always positioned "margin" pixels lower than the top edge, maxH is just window(frame) height minus margin
-	maxH = self.innerHeight - getCfgValue("margin") - 15;
+	maxH = self.innerHeight - 2 * getCfgValue("margin");
 	// maxW is a bit complexer, as image is not horizontally positioned "margin" pixels right to the left edge, may from center of a page
 	// innerWidth include the scrollbar width so it is actually a bit larger than the page area
 	maxW = window.scrollX + self.innerWidth - getX(img) - getCfgValue("margin") - 15;
@@ -307,12 +307,12 @@ function calMaxSize(img)
 function resizeImg(img)
 {
 		// Scale according to the H/W ratio comparing to the max size ratio
-		if ((img.height / img.width) > (maxH / maxW)) {
+		if ((img.naturalHeight / img.naturalWidth) > (maxH / maxW)) {
 			img.height = maxH;
-			img.width  = maxH * img.getUserData("origW") / img.getUserData("origH");
+			img.width  = maxH * img.naturalWidth / img.naturalHeight;
 		} else {
 			img.width  = maxW;
-			img.height = maxW * img.getUserData("origH") / img.getUserData("origW");
+			img.height = maxW * img.naturalHeight / img.naturalWidth;
 		}
 
 		img.classList.add("QIB_resized");
@@ -541,8 +541,10 @@ function debugMsg(html)
 			document.body.appendChild(debugDIV);
 		};
 		debugDIV.innerHTML = "Image Idx: " + curIdx + " / " + imgList.length +
+			"<br/>getX/getY: " + getX(curImg) + " / " + getY(curImg) +
 			"<br/>Current(H/W): " + curImg.height + " / " + curImg.width + " (" + (curImg.height / curImg.width).toFixed(3) + ")" +
 			"<br/>Original(H/W): " + curImg.getUserData("origH") + " / " + curImg.getUserData("origW")  + " (" + (curImg.getUserData("origH") / curImg.getUserData("origW")).toFixed(3) + ")" +
+			"<br/>Natural(H/W): " + curImg.naturalHeight + " / " + curImg.naturalWidth  + " (" + (curImg.naturalHeight / curImg.naturalWidth).toFixed(3) + ")" +
 			"<br/>Max(H/W): " + maxH + " / " + maxW + " (" + (maxH / maxW).toFixed(3) + ")";
 		debugDIV.style.setProperty("display", "inline", "important");
 
@@ -616,13 +618,6 @@ function displayCfgBox(display)
 	document.getElementById("QIB_save_config").addEventListener("click", saveCfg, false);
 	document.getElementById("QIB_reset_config").addEventListener("click", resetCfg, false);
 	document.getElementById("QIB_cancel_config").addEventListener("click", cancelCfg, false);
-
-	/*if (typeof debugTimeoutID == "number") {
-		window.clearTimeout(debugTimeoutID);
-	}
-	debugTimeoutID = window.setTimeout(function() {
-		cfgBoxDIV.style.setProperty("display", "none", "important");
-	}, 5000);*/
 }
 
 function saveCfg()
