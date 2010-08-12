@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.1.1
+// @version		2.1.2
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -31,7 +31,6 @@ var userprefs = {
 	keyRotate : 114, // r
 	keyViewInNewTab : 118, // v
 	keySave : 115, // s
-	keyCfg : 99, // c
 
 	// When scroll to next image, the margin between image top edge to window top edge
 	margin : 30,
@@ -266,8 +265,6 @@ document.addEventListener("keypress", function(event) {
 		viewBtnClick();
 	} else if (event.charCode == getCfgValue("keySave")) { // Save image
 		saveBtnClick();
-	} else if (event.charCode == getCfgValue("keyCfg")) { // Show configuration box
-		cfgBtnClick();
 	}
 }, true);
 
@@ -570,8 +567,6 @@ function displayCfgBox(display)
 
 	};
 
-	cfgBoxDIV.style.setProperty("display", (display ? "block" : "none"), "important");
-
 	cfgBoxDIV.innerHTML = [
 		"<div id='QIB_div'>",
 			"Mode: ",
@@ -600,6 +595,8 @@ function displayCfgBox(display)
 			"<input type='button' id='QIB_cancel_config' value='Cancel' title='Cancel and don't save configuration'/>",
 		"</div>",
 		].join("");
+
+	cfgBoxDIV.style.setProperty("display", (display ? "block" : "none"), "important");
 
 	document.getElementById("QIB_save_config").addEventListener("click", saveCfg, false);
 	document.getElementById("QIB_reset_config").addEventListener("click", resetCfg, false);
