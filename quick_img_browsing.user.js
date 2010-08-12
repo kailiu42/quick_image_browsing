@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.1
+// @version		2.1.1
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -175,7 +175,8 @@ function init()
 document.addEventListener("keypress", function(event) {
 	// If currently key pressed in a input, select or textarea, do nothing
 	var curElement = document.activeElement.tagName.toLowerCase();
-	if (curElement == "input" || curElement == "select" || curElement == "textarea") {
+	if (curElement == "input" || curElement == "select" || curElement == "textarea"
+		|| document.activeElement.contentEditable == "true" || document.activeElement.contentEditable == "") {
 		return;
 	}
 
@@ -265,7 +266,7 @@ document.addEventListener("keypress", function(event) {
 		viewBtnClick();
 	} else if (event.charCode == getCfgValue("keySave")) { // Save image
 		saveBtnClick();
-	} else if (event.charCode == getCfgValue("keyCfg")) { // Save image
+	} else if (event.charCode == getCfgValue("keyCfg")) { // Show configuration box
 		cfgBtnClick();
 	}
 }, true);
