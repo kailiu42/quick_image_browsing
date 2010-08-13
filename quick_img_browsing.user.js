@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.2
+// @version		2.2.1
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -464,6 +464,8 @@ function origBtnClick()
 {
 	if (curImg) {
 		if (curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
+			curImg.style.setProperty("max-height", curImg.getUserData("origH") + "px", "important");
+			curImg.style.setProperty("max-width", curImg.getUserData("origH") + "px", "important");
 			curImg.height = curImg.getUserData("origH");
 			curImg.width = curImg.getUserData("origW");
 
