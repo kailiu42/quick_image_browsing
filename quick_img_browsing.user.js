@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.1.3
+// @version		2.1.5
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -23,7 +23,7 @@ var userprefs = {
 	// Shortcut keys
 	keyUp : 107, // k
 	keyDown : 106, // j
-	keyFill : 102, // f
+	keyFit : 102, // f
 	keyOrig : 111, // o
 	keyNatural : 110, // n
 	keyZoomOut : 122, // z
@@ -63,7 +63,7 @@ var userprefs = {
 var maxH, maxW;
 
 // For display alert / debug messages
-var sizeNoticeDIV, fillBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan, saveBtnSpan, cfgBtnSpan;
+var sizeNoticeDIV, fitBtnSpan, naturalBtnSpan, origBtnSpan, zoomOutBtnSpan, zoomInBtnSpan, rotateBtnSpan, viewBtnSpan, saveBtnSpan, cfgBtnSpan;
 var alertDIV, debugDIV, cfgBoxDIV;
 var alertTimeoutID, debugTimeoutID;
 
@@ -143,8 +143,6 @@ function init()
 									"width: auto !important;",
 									"z-index: 2147483647 !important;",
 									"float: none !important;",
-									"font-family: Arial, Helvetica !important;",
-									"font-size: 12px !important;",
 									"line-height: 16px !important;",
 									"padding: 3px 5px 0px 5px !important;",
 									"background-color: #AF9C90 !important;",
@@ -157,7 +155,7 @@ function init()
 		GM_addStyle(["#QIB_div { padding: 0px !important;",
 									"margin: 2px !important;"].join(""));
 
-		GM_addStyle(["#QIB_div > select, #QIB_div > input, #QIB_div > label {",
+		GM_addStyle(["#QIB_div select, input, label, span {",
 									"display: inline !important;",
 									"font-family: Arial, Helvetica !important;",
 									"font-size: 12px !important;",
@@ -250,8 +248,8 @@ document.addEventListener("keypress", function(event) {
 				break;
 			}
 		}
-	} else if (event.charCode == getCfgValue("keyFill")) { // Set the size of current image to adequate size
-		fillBtnClick();
+	} else if (event.charCode == getCfgValue("keyFit")) { // Set the size of current image to adequate size
+		fitBtnClick();
 	} else if (event.charCode == getCfgValue("keyOrig")) { // Set the size of current image to original size
 		origBtnClick();
 	} else if (event.charCode == getCfgValue("keyNatural")) { // Set the size of current image to natural size
@@ -304,18 +302,43 @@ function calMaxSize(img)
 	maxW = window.scrollX + self.innerWidth - getX(img) - getCfgValue("margin") - 15;
 }
 
-function resizeImg(img)
+function fitImg(img)
 {
-		// Scale according to the H/W ratio comparing to the max size ratio
-		if ((img.naturalHeight / img.naturalWidth) > (maxH / maxW)) {
-			img.height = maxH;
-			img.width  = maxH * img.naturalWidth / img.naturalHeight;
-		} else {
-			img.width  = maxW;
-			img.height = maxW * img.naturalHeight / img.naturalWidth;
-		}
+	var newH, newW;
+	// Scale according to the H/W ratio comparing to the max size ratio
+	if ((img.naturalHeight / img.naturalWidth) > (maxH / maxW)) {
+		newH = maxH;
+		newW = maxH * img.naturalWidth / img.naturalHeight;
+	} else {
+		newW = maxW;
+		newH = maxW * img.naturalHeight / img.naturalWidth;
+	}
 
-		img.classList.add("QIB_resized");
+	img.style.setProperty("max-height", newH + "px", "important");
+	img.style.setProperty("max-width", newW + "px", "important");
+	img.height = newH;
+	img.width = newW;
+
+	img.classList.add("QIB_resized");
+}
+
+function zoomImg(img, step)
+{
+	// Some site use javascript to ensure proportional scaling of the image. So need to save the current H/W first before change any of them
+	// If the code is like this:
+	// curImg.height *= getCfgValue("zoomOutStep");
+	// curImg.width  *= getCfgValue("zoomOutStep");
+	// Then when height is changed first the width actually is increased accordingly, and then get increased again, thus give a non-proportional scaled image
+	var newH = img.height * step;
+	var newW = img.width * step;
+
+	img.style.setProperty("max-height", newH + "px", "important");
+	img.style.setProperty("max-width", newW + "px", "important");
+	img.height = newH;
+	img.width  = newW;
+
+	displaySizeNotice(true, getX(img), getY(img));
+	debugMsg();
 }
 
 function processImg(img)
@@ -325,9 +348,9 @@ function processImg(img)
 	if (img.getUserData("origW") == null) { img.setUserData("origW", img.width, null); }
 
 	calMaxSize(img);
-	// Reduce size if image is bigger than the view area
+	// Reduce size only if image is bigger than the view area
 	if (img.height > maxH || img.width > maxW) {
-		resizeImg(img);
+		fitImg(img);
 	}
 
 	// Set tabIndex=0 always for current viewing image
@@ -383,12 +406,12 @@ function displaySizeNotice(display, left, top)
 		// The float message displayed at the top left corner when mouse is over a image
 		sizeNoticeDIV = document.createElement("div");
 		sizeNoticeDIV.className = "QIB_sizeNoticeDIV";
-		window.top.document.body.appendChild(sizeNoticeDIV);
+		document.body.appendChild(sizeNoticeDIV);
 		sizeNoticeDIV.addEventListener("mouseover", sizeNoticeMouseOver, false);
 		sizeNoticeDIV.addEventListener("mouseout", sizeNoticeMouseOut, false);
 
-		// The "Fill Size" button in the float message
-		fillBtnSpan		= createBtn("<u>F</u>ill", fillBtnClick); // Fill image to adequate
+		// The buttons in the float message
+		fitBtnSpan		= createBtn("<u>F</u>it", fitBtnClick); // Fit image to adequate
 		origBtnSpan		= createBtn("<u>O</u>rig", origBtnClick); // Scale to original size appointed in web page
 		naturalBtnSpan	= createBtn("<u>N</u>atual", naturalBtnClick); // Scale to its natural size
 		zoomOutBtnSpan	= createBtn("<u>Z</u> Out", zoomOutBtnClick); // Zoom out by zoomOutStep
@@ -427,11 +450,11 @@ function createBtn(html, func)
 	return btn;
 }
 
-function fillBtnClick()
+function fitBtnClick()
 {
 	if (curImg) {
 		calMaxSize(curImg);
-		resizeImg(curImg)
+		fitImg(curImg)
 		displaySizeNotice(true, getX(curImg), getY(curImg));
 		debugMsg();
 	}
@@ -455,6 +478,8 @@ function origBtnClick()
 function naturalBtnClick()
 {
 	if (curImg) {
+		curImg.style.setProperty("max-height", curImg.naturalHeight + "px", "important");
+		curImg.style.setProperty("max-width", curImg.naturalWidth + "px", "important");
 		curImg.height = curImg.naturalHeight;
 		curImg.width = curImg.naturalWidth;
 
@@ -465,33 +490,15 @@ function naturalBtnClick()
 
 function zoomOutBtnClick()
 {
-	// Some site use javascript to ensure proportional scaling of the image. So need to save the current H/W first before change any of them
-	// If the code is like this:
-	// curImg.height *= getCfgValue("zoomOutStep");
-	// curImg.width  *= getCfgValue("zoomOutStep");
-	// Then when height is changed first the width actually is increased accordingly, and then get increased again, thus give a non-proportional scaled image
 	if (curImg) {
-		var curH = curImg.height;
-		var curW = curImg.width;
-		curImg.height = curH * getCfgValue("zoomOutStep");
-		curImg.width  = curW * getCfgValue("zoomOutStep");
-
-		displaySizeNotice(true, getX(curImg), getY(curImg));
-		debugMsg();
+		zoomImg(curImg, getCfgValue("zoomOutStep"));
 	}
 }
 
 function zoomInBtnClick()
 {
-	// See zoom out code above
 	if (curImg) {
-		var curH = curImg.height;
-		var curW = curImg.width;
-		curImg.height = curH * getCfgValue("zoomInStep");
-		curImg.width  = curW * getCfgValue("zoomInStep");
-
-		displaySizeNotice(true, getX(curImg), getY(curImg));
-		debugMsg();
+		zoomImg(curImg, getCfgValue("zoomInStep"));
 	}
 }
 
@@ -548,12 +555,12 @@ function debugMsg(html)
 			"<br/>Max(H/W): " + maxH + " / " + maxW + " (" + (maxH / maxW).toFixed(3) + ")";
 		debugDIV.style.setProperty("display", "inline", "important");
 
-		/*if (typeof debugTimeoutID == "number") {
+		if (typeof debugTimeoutID == "number") {
 			window.clearTimeout(debugTimeoutID);
 		}
 		debugTimeoutID = window.setTimeout(function() {
 			debugDIV.style.setProperty("display", "none", "important");
-		}, 5000);*/
+		}, 5000);
 	}
 }
 
@@ -586,7 +593,7 @@ function displayCfgBox(display)
 
 	cfgBoxDIV.innerHTML = [
 		"<div id='QIB_div'>",
-			"Mode: ",
+			"<span>Mode:</span>",
 			"<select id='QIB_mode' title='Choose different mode for enumerate and loop image. Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive'>",
 				(getCfgValue("mode") == 1 ? 
 					"<option value='0'>0 - By img position</option>" + 
@@ -598,13 +605,13 @@ function displayCfgBox(display)
 			"</select>",
 		"</div>",
 		"<div id='QIB_div'>",
-			"Top margin: <input type='text' id='QIB_margin' maxlength='4' size='3' title='Top margin when jump to a image' value='", getCfgValue("margin"), "'/>",
+			"<span>Top margin:</span><input type='text' id='QIB_margin' maxlength='4' size='3' title='Top margin when jump to a image' value='", getCfgValue("margin"), "'/>",
 		"</div>",
 		"<div id='QIB_div'>",
 			"<input type='checkbox' id='QIB_ignore_small' title='Check to ignore small images when navigating' ", (getCfgValue("ignoreSmallImg") ? "checked" : ""), "/>&nbsp;",
 			"<label for='QIB_ignore_small'>Ignore images smaller than</label><br/>",
-			"Height: <input type='text' id='QIB_min_h' maxlength='4' size='3' title='Height to ignore' value='", getCfgValue("minH"), "'/>",
-			" Width: <input type='text' id='QIB_min_w' maxlength='4' size='3' title='Width to ignore'  value='", getCfgValue("minW"), "'/>",
+			"<span>Height:</span><input type='text' id='QIB_min_h' maxlength='4' size='2' title='Height to ignore' value='", getCfgValue("minH"), "'/>",
+			"<span>Width:</span><input type='text' id='QIB_min_w' maxlength='4' size='2' title='Width to ignore'  value='", getCfgValue("minW"), "'/>",
 		"</div>",
 		"<div id='QIB_div'>",
 			"<input type='button' id='QIB_save_config' value='Save' title='Save the configuration'/>&nbsp;&nbsp;",
