@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.1.5
+// @version		2.2
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -20,17 +20,17 @@ var userprefs = {
 	// Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive
 	mode: 0,
 
-	// Shortcut keys
-	keyUp : 107, // k
-	keyDown : 106, // j
-	keyFit : 102, // f
-	keyOrig : 111, // o
-	keyNatural : 110, // n
-	keyZoomOut : 122, // z
-	keyZoomIn : 105, // i
-	keyRotate : 114, // r
-	keyViewInNewTab : 118, // v
-	keySave : 115, // s
+	// Shortcut keys object define shortCutKey(charCode, ctrlKey, altKey)
+	keyUp		: new shortCutKey(107, false, false), // k
+	keyDown		: new shortCutKey(106, false, false), // j
+	keyFit		: new shortCutKey(102, false, false), // f
+	keyOrig		: new shortCutKey(111, false, false), // o
+	keyNatural	: new shortCutKey(110, false, false), // n
+	keyZoomOut	: new shortCutKey(122, false, false), // z
+	keyZoomIn	: new shortCutKey(105, false, false), // i
+	keyRotate	: new shortCutKey(114, false, false), // r
+	keyViewInNewTab : new shortCutKey(118, false, false), // v
+	keySave		: new shortCutKey(115, false, false), // s
 
 	// When scroll to next image, the margin between image top edge to window top edge
 	margin : 30,
@@ -178,7 +178,7 @@ document.addEventListener("keypress", function(event) {
 		return;
 	}
 
-	if (event.charCode == getCfgValue("keyDown") || event.charCode == getCfgValue("keyUp")) {
+	if (testKeyEvent(event, getCfgValue("keyDown")) || testKeyEvent(event, getCfgValue("keyUp"))) {
 		init();
 
 		// Initialize the imgList every time when key pressed so if page changed(like with autopager) we will find the new images.
@@ -186,7 +186,7 @@ document.addEventListener("keypress", function(event) {
 		curImg = document.querySelectorAll("img[tabIndex]")[0] ? document.querySelectorAll("img[tabIndex]")[0] : imgList[0];
 	}
 
-	if (event.charCode == getCfgValue("keyDown")) { // Browsing from top to bottom
+	if (testKeyEvent(event, getCfgValue("keyDown"))) { // Browsing from top to bottom
 		if (getCfgValue("mode") == 1) {
 			if (curIdx == null || curIdx < 0) {
 				curIdx = 0;
@@ -217,7 +217,7 @@ document.addEventListener("keypress", function(event) {
 				break;
 			}
 		}
-	} else if (event.charCode == getCfgValue("keyUp")) { // Browsing from buttom to top
+	} else if (testKeyEvent(event, getCfgValue("keyUp"))) { // Browsing from buttom to top
 		if (getCfgValue("mode") == 1) {
 			if (curIdx == null || curIdx > imgList.length - 1) {
 				curIdx = imgList.length - 1;
@@ -248,21 +248,21 @@ document.addEventListener("keypress", function(event) {
 				break;
 			}
 		}
-	} else if (event.charCode == getCfgValue("keyFit")) { // Set the size of current image to adequate size
+	} else if (testKeyEvent(event, getCfgValue("keyFit"))) { // Set the size of current image to adequate size
 		fitBtnClick();
-	} else if (event.charCode == getCfgValue("keyOrig")) { // Set the size of current image to original size
+	} else if (testKeyEvent(event, getCfgValue("keyOrig"))) { // Set the size of current image to original size
 		origBtnClick();
-	} else if (event.charCode == getCfgValue("keyNatural")) { // Set the size of current image to natural size
+	} else if (testKeyEvent(event, getCfgValue("keyNatural"))) { // Set the size of current image to natural size
 		naturalBtnClick();
-	} else if (event.charCode == getCfgValue("keyZoomOut")) { // Zoom out current image
+	} else if (testKeyEvent(event, getCfgValue("keyZoomOut"))) { // Zoom out current image
 		zoomOutBtnClick();
-	} else if (event.charCode == getCfgValue("keyZoomIn")) { // Zoom in current image
+	} else if (testKeyEvent(event, getCfgValue("keyZoomIn"))) { // Zoom in current image
 		zoomInBtnClick();
-	} else if (event.charCode == getCfgValue("keyRotate")) { // Rotate current image
+	} else if (testKeyEvent(event, getCfgValue("keyRotate"))) { // Rotate current image
 		rotateBtnClick();
-	} else if (event.charCode == getCfgValue("keyViewInNewTab")) { // Open image in a new tab
+	} else if (testKeyEvent(event, getCfgValue("keyViewInNewTab"))) { // Open image in a new tab
 		viewBtnClick();
-	} else if (event.charCode == getCfgValue("keySave")) { // Save image
+	} else if (testKeyEvent(event, getCfgValue("keySave"))) { // Save image
 		saveBtnClick();
 	}
 }, true);
@@ -679,6 +679,25 @@ function setCfgValue(key, value)
 	//value = encodeURIComponent(value);
 	//window.localStorage ? window.localStorage.setItem(setName, value) : setCookie(setName, value, 365, '/', location.hostname);
 	GM_setValue(key, value);
+}
+
+function shortCutKey(charCode, ctrlKey, altKey)
+{
+	// The constructor for shortCutKey object
+	this.charCode = charCode;
+	this.ctrlKey = ctrlKey;
+	this.altKey = altKey;
+}
+
+function testKeyEvent(event, key)
+{
+	if (event.charCode  == key.charCode
+		&& event.ctrlKey== key.ctrlKey
+		&& event.altKey	== key.altKey) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
 
