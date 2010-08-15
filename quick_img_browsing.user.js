@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.2.1
+// @version		2.2.2
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -20,7 +20,7 @@ var userprefs = {
 	// Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive
 	mode: 0,
 
-	// Shortcut keys object define shortCutKey(charCode, ctrlKey, altKey)
+	// Shortcut key object definition: shortCutKey(charCode, ctrlKey, altKey)
 	keyUp		: new shortCutKey(107, false, false), // k
 	keyDown		: new shortCutKey(106, false, false), // j
 	keyFit		: new shortCutKey(102, false, false), // f
@@ -79,15 +79,13 @@ GM_registerMenuCommand("Quick Img Browsing - Configuration", cfgBtnClick);
 function init()
 {
 	if (!initialized) {
-		GM_addStyle(["img[tabIndex='0'] { border-style: solid !important;",
-											"border-width: ", getCfgValue("borderWidth"), "px", " !important;", 
-											"border-color: ", getCfgValue("curBorderColor"), " !important;}"].join(""));
-
-		GM_addStyle(["img[tabIndex=\"0\"].QIB_resized { border-style: solid !important;", 
-													"border-width: ", getCfgValue("borderWidth"), "px", " !important;",
-													"border-color: ", getCfgValue("resizedBorderColor"), " !important;}"].join(""));
-
-		GM_addStyle(["div.QIB_sizeNoticeDIV { position: absolute !important;",
+		GM_addStyle(["img.QIB_focus { border-style: solid !important;",
+										"border-width: ", getCfgValue("borderWidth"), "px", " !important;", 
+										"border-color: ", getCfgValue("curBorderColor"), " !important;}",
+					"img.QIB_focus.QIB_resized { border-style: solid !important;", 
+										"border-width: ", getCfgValue("borderWidth"), "px", " !important;",
+										"border-color: ", getCfgValue("resizedBorderColor"), " !important;}",
+					"div.QIB_sizeNoticeDIV { position: absolute !important;",
 										"z-index: 2147483647 !important;",
 										"float: none !important;",
 										"font-family: Arial, Helvetica !important;",
@@ -100,71 +98,64 @@ function init()
 										"border: 0 none !important;",
 										"text-align: left !important;",
 										"color: #666666 !important;",
-										"background-color: ", getCfgValue("curBorderColor"), " !important;}"].join(""));
-
-		GM_addStyle(["span.QIB_sizeBtnSpan { cursor: pointer !important;",
+										"background-color: ", getCfgValue("curBorderColor"), " !important;}",
+					"span.QIB_sizeBtnSpan { cursor: pointer !important;",
 										"height: auto !important;",
 										"width: auto !important;",
 										"line-height: 16px !important;",
 										"background-color: #F1F1F1 !important;",
 										"border: 0 none !important;",
 										"margin: 2px 1px 2px 2px !important;",
-										"padding: 1px 3px 1px 2px !important;}"].join(""));
-
-		GM_addStyle(["div.QIB_debugDIV { position: fixed !important;",
-									"z-index: 2147483647 !important;",
-									"float: none !important;",
-									"font-family: Arial, Helvetica !important;",
-									"font-size: 12px !important;",
-									"line-height: 16px !important;",
-									"padding: 2px 5px 2px 5px !important;",
-									"background-color: #AF9C90 !important;",
-									"border: none !important;",
-									"text-align: left !important;",
-									"color: #303030 !important;",
-									"right: 0 !important;",
-									"bottom: 0 !important;}"].join(""));
-
-		GM_addStyle(["div.QIB_alertDIV { position: fixed !important;",
-									"z-index: 2147483647 !important;",
-									"float: none !important;",
-									"font-family: Arial, Helvetica !important;",
-									"font-size: 16px !important;",
-									"padding: 2px 8px 2px 8px !important;",
-									"border: none !important;",
-									"text-align: left !important;",
-									"color: black !important;",
-									"left: 0 !important;",
-									"bottom: 0 !important;",
-									"background-color: ", getCfgValue("curBorderColor"), " !important;}"].join(""));
-
-		GM_addStyle(["div.QIB_cfgBoxDIV { position: fixed !important;",
-									"height: auto !important;",
-									"width: auto !important;",
-									"z-index: 2147483647 !important;",
-									"float: none !important;",
-									"line-height: 16px !important;",
-									"padding: 3px 5px 0px 5px !important;",
-									"background-color: #AF9C90 !important;",
-									"border: none !important;",
-									"text-align: left !important;",
-									"left: 0 !important;",
-									"bottom: 0 !important;",
-									"color: #303030 !important;}"].join(""));
-
-		GM_addStyle(["#QIB_div { padding: 0px !important;",
-									"margin: 2px !important;"].join(""));
-
-		GM_addStyle(["#QIB_div select, input, label, span {",
-									"display: inline !important;",
-									"font-family: Arial, Helvetica !important;",
-									"font-size: 12px !important;",
-									"color: #303030 !important;",
-									"padding: 0px !important;",
-									"margin: 1px !important;",
-									"vertical-align: bottom !important;}"].join(""));
-
-		GM_addStyle(["#QIB_div > select > option { padding-left: 3px !important;}"].join(""));
+										"padding: 1px 3px 1px 2px !important;}",
+					"div.QIB_debugDIV { position: fixed !important;",
+										"z-index: 2147483647 !important;",
+										"float: none !important;",
+										"font-family: Arial, Helvetica !important;",
+										"font-size: 12px !important;",
+										"line-height: 16px !important;",
+										"padding: 2px 5px 2px 5px !important;",
+										"background-color: #AF9C90 !important;",
+										"border: none !important;",
+										"text-align: left !important;",
+										"color: #303030 !important;",
+										"right: 0 !important;",
+										"bottom: 0 !important;}",
+					"div.QIB_alertDIV { position: fixed !important;",
+										"z-index: 2147483647 !important;",
+										"float: none !important;",
+										"font-family: Arial, Helvetica !important;",
+										"font-size: 16px !important;",
+										"padding: 2px 8px 2px 8px !important;",
+										"border: none !important;",
+										"text-align: left !important;",
+										"color: black !important;",
+										"left: 0 !important;",
+										"bottom: 0 !important;",
+										"background-color: ", getCfgValue("curBorderColor"), " !important;}",
+					"div.QIB_cfgBoxDIV { position: fixed !important;",
+										"height: auto !important;",
+										"width: auto !important;",
+										"z-index: 2147483647 !important;",
+										"float: none !important;",
+										"line-height: 16px !important;",
+										"padding: 3px 5px 0px 5px !important;",
+										"background-color: #AF9C90 !important;",
+										"border: none !important;",
+										"text-align: left !important;",
+										"left: 0 !important;",
+										"bottom: 0 !important;",
+										"color: #303030 !important;}",
+					"#QIB_div { padding: 0px !important;",
+										"margin: 2px !important;",
+					"#QIB_div select, input, label, span {",
+										"display: inline !important;",
+										"font-family: Arial, Helvetica !important;",
+										"font-size: 12px !important;",
+										"color: #303030 !important;",
+										"padding: 0px !important;",
+										"margin: 1px !important;",
+										"vertical-align: bottom !important;}",
+					"#QIB_div > select > option { padding-left: 3px !important;}"].join(""));
 
 		initialized = true;
 	}
@@ -182,8 +173,12 @@ document.addEventListener("keypress", function(event) {
 		init();
 
 		// Initialize the imgList every time when key pressed so if page changed(like with autopager) we will find the new images.
-		imgList = document.querySelectorAll("img");
-		curImg = document.querySelectorAll("img[tabIndex]")[0] ? document.querySelectorAll("img[tabIndex]")[0] : imgList[0];
+		imgList = document.getElementsByTagName("img");
+		if (imgList.length == 0) {
+			alertMsg("No Image Found");
+			return;
+		}
+		if (!curImg) { curImg = imgList[0]; }
 	}
 
 	if (testKeyEvent(event, getCfgValue("keyDown"))) { // Browsing from top to bottom
@@ -193,7 +188,7 @@ document.addEventListener("keypress", function(event) {
 			} else if (curIdx < imgList.length - 1) {
 				curIdx++;
 			} else {
-				curIdx = imgList.length -1;
+				curIdx = imgList.length - 1;
 			}
 		}
 
@@ -326,8 +321,8 @@ function zoomImg(img, step)
 {
 	// Some site use javascript to ensure proportional scaling of the image. So need to save the current H/W first before change any of them
 	// If the code is like this:
-	// curImg.height *= getCfgValue("zoomOutStep");
-	// curImg.width  *= getCfgValue("zoomOutStep");
+	// img.height *= getCfgValue("zoomOutStep");
+	// img.width  *= getCfgValue("zoomOutStep");
 	// Then when height is changed first the width actually is increased accordingly, and then get increased again, thus give a non-proportional scaled image
 	var newH = img.height * step;
 	var newW = img.width * step;
@@ -336,6 +331,8 @@ function zoomImg(img, step)
 	img.style.setProperty("max-width", newW + "px", "important");
 	img.height = newH;
 	img.width  = newW;
+
+	img.classList.add("QIB_resized");
 
 	displaySizeNotice(true, getX(img), getY(img));
 	debugMsg();
@@ -353,8 +350,7 @@ function processImg(img)
 		fitImg(img);
 	}
 
-	// Set tabIndex=0 always for current viewing image
-	img.setAttribute("tabIndex", 0);
+	img.classList.add("QIB_focus");
 
 	// Bring the image to front
 	if (getCfgValue("bringToFront")) {
@@ -391,9 +387,8 @@ function jumpToImg(img, imgIdx)
 function cleanUpImg(img)
 {
 	// This function should only take the last img as an argument
-	// Remove the tabIndex attribute, always set tabIndex=0 only on current viewing image
 	try	{
-		img.removeAttribute("tabIndex");
+		img.classList.remove("QIB_focus");
 		img.removeEventListener("mouseover", sizeNoticeMouseOver, false);
 		img.removeEventListener("mouseout", sizeNoticeMouseOut, false);
 	} catch(err) {
@@ -465,7 +460,7 @@ function origBtnClick()
 	if (curImg) {
 		if (curImg.getUserData("origH") != null && curImg.getUserData("origW") != null) {
 			curImg.style.setProperty("max-height", curImg.getUserData("origH") + "px", "important");
-			curImg.style.setProperty("max-width", curImg.getUserData("origH") + "px", "important");
+			curImg.style.setProperty("max-width", curImg.getUserData("origW") + "px", "important");
 			curImg.height = curImg.getUserData("origH");
 			curImg.width = curImg.getUserData("origW");
 
