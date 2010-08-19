@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.2.3
+// @version		2.2.5
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -148,7 +148,7 @@ function init()
 										"color: #303030 !important;}",
 					"#QIB_div { padding: 0px !important;",
 										"margin: 2px !important;}",
-					"#QIB_div select, input, label, span {",
+					"#QIB_div select, #QIB_div input, #QIB_div label, #QIB_div span {",
 										"display: inline !important;",
 										"font-family: Arial, Helvetica !important;",
 										"font-size: 12px !important;",
