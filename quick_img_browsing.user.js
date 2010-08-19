@@ -2,7 +2,7 @@
 // @name		Quick Img Browsing
 // @description Browse the images in the page easier, with shortcut keys and floating buttons.
 // @author		kraml
-// @version		2.2.2
+// @version		2.2.3
 // @homepage	http://userscripts.org/scripts/show/83311
 // @namespace	http://github.com/kraml/quick_image_browsing
 // @include		*
@@ -10,15 +10,16 @@
 // @exclude		http*://mail.google.com/*
 // ==/UserScript==
 
-const DEBUG = true;
-
 // User customizable preferences. These are default values. If different values are set by setCfgValue() then these will be overrided
 var userprefs = {
+	// Show debug information or not
+	debug : false,
+
 	// Two different modes for enumerate all img elements in the page
 	// 0: according to current position of images, keyDown jump to the image that is just below top edge
 	// 1: totally ignore image position, loop always start from first/last image, by index in the list
 	// Mode 1 should work on more sites than mode 0. While mode 0 always start from the current view port so is more intuitive
-	mode: 0,
+	mode : 0,
 
 	// Shortcut key object definition: shortCutKey(charCode, ctrlKey, altKey)
 	keyUp		: new shortCutKey(107, false, false), // k
@@ -146,7 +147,7 @@ function init()
 										"bottom: 0 !important;",
 										"color: #303030 !important;}",
 					"#QIB_div { padding: 0px !important;",
-										"margin: 2px !important;",
+										"margin: 2px !important;}",
 					"#QIB_div select, input, label, span {",
 										"display: inline !important;",
 										"font-family: Arial, Helvetica !important;",
@@ -538,7 +539,7 @@ function cfgBtnClick()
 
 function debugMsg(html)
 {
-	if (DEBUG) {
+	if (getCfgValue("debug")) {
 		if (!debugDIV) {
 			debugDIV = document.createElement("div");
 			debugDIV.className = "QIB_debugDIV";
@@ -606,9 +607,13 @@ function displayCfgBox(display)
 		"</div>",
 		"<div id='QIB_div'>",
 			"<input type='checkbox' id='QIB_ignore_small' title='Check to ignore small images when navigating' ", (getCfgValue("ignoreSmallImg") ? "checked" : ""), "/>&nbsp;",
-			"<label for='QIB_ignore_small'>Ignore images smaller than</label><br/>",
+			"<label for='QIB_ignore_small' title='Check to ignore small images when navigating'>Ignore images smaller than</label><br/>",
 			"<span>Height:</span><input type='text' id='QIB_min_h' maxlength='4' size='2' title='Height to ignore' value='", getCfgValue("minH"), "'/>",
 			"<span>Width:</span><input type='text' id='QIB_min_w' maxlength='4' size='2' title='Width to ignore'  value='", getCfgValue("minW"), "'/>",
+		"</div>",
+		"<div id='QIB_div'>",
+			"<input type='checkbox' id='QIB_debug' title='Debug information at right bottom conner about img index, position, size etc.' ", (getCfgValue("debug") ? "checked" : ""), "/>&nbsp;",
+			"<label for='QIB_debug' title='Debug information at right bottom conner about img index, position, size etc.' >Show debug info.</label><br/>",
 		"</div>",
 		"<div id='QIB_div'>",
 			"<input type='button' id='QIB_save_config' value='Save' title='Save the configuration'/>&nbsp;&nbsp;",
@@ -631,6 +636,7 @@ function saveCfg()
 	setCfgValue("ignoreSmallImg", Boolean(document.getElementById("QIB_ignore_small").checked));
 	setCfgValue("minH", document.getElementById("QIB_min_h").value - 0);
 	setCfgValue("minW", document.getElementById("QIB_min_w").value - 0);
+	setCfgValue("debug", Boolean(document.getElementById("QIB_debug").checked));
 
 	displayCfgBox(false);
 }
@@ -642,6 +648,7 @@ function resetCfg()
 	GM_deleteValue("ignoreSmallImg");
 	GM_deleteValue("minH");
 	GM_deleteValue("minW");
+	GM_deleteValue("debug");
 
 	displayCfgBox(false);
 }
